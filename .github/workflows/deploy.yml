@@ -1,0 +1,32 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test-build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Configure SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "${{ secrets.DEPLOY_PORT }}" "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
+      - name: Deploy static files
+        run: |
+          tar -czf dist.tar.gz -C dist .
+          scp -i ~/.ssh/deploy_key -P "${{ secrets.DEPLOY_PORT }}" dist.tar.gz "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/home/kw/apps/team-role-randomizer/"
+          ssh -i ~/.ssh/deploy_key -p "${{ secrets.DEPLOY_PORT }}" "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" "cd /home/kw/apps/team-role-randomizer && rm -rf public.new && mkdir public.new && tar -xzf dist.tar.gz -C public.new && rm -f dist.tar.gz && rm -rf public.old && if [ -d public ]; then mv public public.old; fi && mv public.new public"
+      - name: Verify live deployment
+        run: curl --fail --retry 5 --retry-delay 3 "https://${{ secrets.DEPLOY_HOST }}/team-randomizer/"

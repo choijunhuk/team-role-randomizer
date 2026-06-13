@@ -1,0 +1,10 @@
+{
+  "name": "팀메이트 랜덤 배정",
+  "short_name": "팀메이트",
+  "start_url": "/team-randomizer/",
+  "scope": "/team-randomizer/",
+  "display": "standalone",
+  "background_color": "#f5f6fa",
+  "theme_color": "#635bff",
+  "description": "팀플과 스터디를 위한 랜덤 팀 및 역할 배정 도구"
+}
