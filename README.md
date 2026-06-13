@@ -13,8 +13,9 @@
 - 드래그 앤 드롭, 화살표 이동, 팀 이름·역할 직접 편집, 실행 취소
 - 배정 결과 복사, TXT 다운로드, 최근 기록 불러오기
 - 공유 링크, QR 코드, 인쇄 화면, JSON 백업·복원
-- 참가자·역할·공정성 설정·최근 기록 LocalStorage 저장
-- 반응형 UI, 다크모드, PWA 오프라인 지원
+- 참가자·역할·공정성 설정·최근 기록을 COMS 계정별 로컬 작업공간에 저장
+- 기존 COMS 계정 로그인 및 로그인 상태 복원
+- 반응형 UI, 다크모드, PWA 설치 및 정적 자산 캐시
 
 ## 실행 방법
 
@@ -24,6 +25,7 @@ npm run dev
 ```
 
 터미널에 표시되는 로컬 주소로 접속합니다.
+개발 서버는 `/api` 요청을 `https://coms.kw.ac.kr`로 프록시합니다. COMS 인증 쿠키의 Secure 속성 때문에 새로고침 후 세션 복원까지 포함한 최종 로그인 검증은 배포 주소에서 확인해야 합니다.
 
 ## 프로덕션 빌드
 
@@ -47,13 +49,19 @@ npm test
 ```text
 src/
 ├── components/
+│   ├── AuthGate.jsx
 │   ├── HistorySection.jsx
+│   ├── LoginScreen.jsx
 │   ├── ParticipantSection.jsx
 │   ├── ResultSection.jsx
 │   ├── RoleSection.jsx
 │   ├── Section.jsx
 │   └── TeamSettings.jsx
 ├── utils/
+│   ├── auth.js
+│   ├── account.js
+│   ├── authFlow.js
+│   ├── authState.js
 │   ├── storage.js
 │   └── teamUtils.js
 ├── App.jsx
@@ -63,4 +71,4 @@ src/
 
 ## 데이터 처리
 
-별도 백엔드 없이 모든 데이터는 현재 브라우저의 LocalStorage에만 저장됩니다. 공정성 옵션은 팀 인원 균형과 고정 팀을 우선하고, 같은 팀 금지·선호 조건을 가능한 범위에서 반영합니다.
+팀메이트는 기존 COMS 인증 API의 HttpOnly 쿠키 세션을 사용하며 비밀번호나 인증 토큰을 저장하지 않습니다. 로그인은 팀메이트 UI 접근을 제한하고, 참가자·역할·공정성 설정·최근 기록을 이 브라우저 안에서 안정적인 COMS 식별자(`studentId`, `id`, `email`)별 작업공간으로 나누는 데 사용됩니다. 로그인 전 공용 LocalStorage 데이터가 있으면 사용자가 직접 현재 계정 작업공간으로 가져올 수 있습니다. 이 데이터는 서버에 동기화되지 않으며 브라우저 LocalStorage에 저장됩니다. 공정성 옵션은 팀 인원 균형과 고정 팀을 우선하고, 같은 팀 금지·선호 조건을 가능한 범위에서 반영합니다.

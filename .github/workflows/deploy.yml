@@ -30,3 +30,7 @@ jobs:
           ssh -i ~/.ssh/deploy_key -p "${{ secrets.DEPLOY_PORT }}" "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" "cd /home/kw/apps/team-role-randomizer && rm -rf public.new && mkdir public.new && tar -xzf dist.tar.gz -C public.new && rm -f dist.tar.gz && rm -rf public.old && if [ -d public ]; then mv public public.old; fi && mv public.new public"
       - name: Verify live deployment
         run: curl --fail --retry 5 --retry-delay 3 "https://${{ secrets.DEPLOY_HOST }}/team-randomizer/"
+      - name: Verify auth API boundary
+        run: |
+          status="$(curl -sS -o /dev/null -w '%{http_code}' "https://${{ secrets.DEPLOY_HOST }}/api/auth/me")"
+          test "$status" = "401" -o "$status" = "403"
