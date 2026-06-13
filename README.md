@@ -13,6 +13,7 @@
 - 드래그 앤 드롭, 화살표 이동, 팀 이름·역할 직접 편집, 실행 취소
 - 배정 결과 복사, TXT 다운로드, 최근 기록 불러오기
 - 공유 링크, QR 코드, 인쇄 화면, JSON 백업·복원
+- 학번 명단으로 초대 링크 생성, COMS 알림 발송 시도, 받은 초대 인박스 확인
 - 참가자·역할·공정성 설정·최근 기록을 COMS 계정별 로컬 작업공간에 저장
 - 기존 COMS 계정 로그인 및 로그인 상태 복원
 - 반응형 UI, 다크모드, PWA 설치 및 정적 자산 캐시
@@ -51,6 +52,8 @@ src/
 ├── components/
 │   ├── AuthGate.jsx
 │   ├── HistorySection.jsx
+│   ├── InviteInboxSection.jsx
+│   ├── InviteSection.jsx
 │   ├── LoginScreen.jsx
 │   ├── ParticipantSection.jsx
 │   ├── ResultSection.jsx
@@ -62,12 +65,39 @@ src/
 │   ├── account.js
 │   ├── authFlow.js
 │   ├── authState.js
+│   ├── invite.js
 │   ├── storage.js
 │   └── teamUtils.js
 ├── App.jsx
 ├── main.jsx
 └── styles.css
 ```
+
+## 학번 초대 흐름
+
+- 주최자가 학번 명단을 입력하면 `#invite=` 해시에 학번 목록·메시지·발신자가 인코딩된 공유 링크를 만듭니다.
+- `POST /api/notify/team-invite`로 COMS에 알림 발송을 시도합니다. 엔드포인트가 없으면 링크는 그대로 동작하며 경고만 표시합니다.
+- 초대 링크로 접속한 사용자의 COMS 학번이 명단에 포함되면 받은 초대 인박스에 저장됩니다.
+- 인박스는 `GET /api/notify/team-invite/inbox`로 새로고침할 수 있으며, COMS가 같은 학번 앞으로 보낸 초대를 합쳐 보여줍니다.
+
+### COMS 알림 엔드포인트 계약
+
+세션 인증된 COMS 회원이 호출하는 신규 엔드포인트로 동기화합니다. 자세한 백엔드 구현은 `coms-website` 저장소를 참고하세요.
+
+`POST /api/notifications/external-invite`
+```json
+{
+  "recipientStudentIds": ["20251234", "20259999"],
+  "actorLabel": "홍길동",
+  "message": "팀플 같이해요",
+  "acceptUrl": "https://coms.kw.ac.kr/team-randomizer/#invite=..."
+}
+```
+응답: `{ "accepted": 2, "unknown": [], "rejected": 0 }`. `actorLabel`이 비어 있으면 서버가 발신자 이름으로 자동 채웁니다.
+
+`GET /api/notifications` → COMS NotificationResponse 배열. `type === "EXTERNAL_INVITE"` 항목만 인박스에 표시되며 `acceptUrl`이 초대 링크 역할을 합니다.
+
+`PATCH /api/notifications/{id}/read` → 합류 후 자동 호출.
 
 ## 데이터 처리
 

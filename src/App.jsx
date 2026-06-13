@@ -5,8 +5,11 @@ import TeamSettings from './components/TeamSettings'
 import RoleSection from './components/RoleSection'
 import ResultSection from './components/ResultSection'
 import HistorySection from './components/HistorySection'
+import InviteSection from './components/InviteSection'
+import InviteInboxSection from './components/InviteInboxSection'
 import { assignRoles, createTeams, decodeShareData, encodeShareData, resultToText } from './utils/teamUtils'
 import { clearAllData, getUserWorkspace, hasLegacyData, importLegacyData, loadData, saveData } from './utils/storage'
+import { fetchInviteInbox, inviteToken, markInviteRead, matchesStudentId, mergeInvites, readInviteFromLocation } from './utils/invite'
 
 const DEFAULT_ROLES = ['발표자', '서기', '자료조사', '발표자료 제작', '코드 작성', '코드 리뷰', '시간 관리', '질문 담당']
 const EMPTY_FAIRNESS = { fixedTeams: {}, avoidPairs: [], preferPairs: [], repeatWeight: 8, balanceFields: [] }
@@ -23,6 +26,7 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
   const [roleRules, setRoleRules] = useState(() => loadData('roleRules', {}, workspace))
   const [histories, setHistories] = useState(() => loadData('histories', [], workspace))
   const [fairness, setFairness] = useState(() => ({ ...EMPTY_FAIRNESS, ...loadData('fairness', {}, workspace) }))
+  const [inbox, setInbox] = useState(() => loadData('inbox', [], workspace))
   const [theme, setTheme] = useState(() => loadData('theme', 'light', workspace))
   const [mode, setMode] = useState('count')
   const [settingValue, setSettingValue] = useState('2')
@@ -41,6 +45,7 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
   useEffect(() => saveData('roleRules', roleRules, workspace), [roleRules, workspace])
   useEffect(() => saveData('histories', histories, workspace), [histories, workspace])
   useEffect(() => saveData('fairness', fairness, workspace), [fairness, workspace])
+  useEffect(() => saveData('inbox', inbox, workspace), [inbox, workspace])
   useEffect(() => { saveData('theme', theme, workspace); document.documentElement.dataset.theme = theme }, [theme, workspace])
   useEffect(() => {
     const hash = new URLSearchParams(location.hash.slice(1)).get('share')
@@ -50,6 +55,28 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
       if (Array.isArray(data.teams)) setTeams(data.teams)
     } catch { /* Ignore malformed shared links. */ }
   }, [])
+
+  useEffect(() => {
+    const invite = readInviteFromLocation()
+    if (!invite) return
+    if (!matchesStudentId(invite, currentUser)) {
+      notify(`초대 링크 대상이 아닙니다 (대상 ${invite.studentIds.length}명).`)
+      return
+    }
+    const incoming = { ...invite, token: inviteToken(invite) }
+    setInbox((prev) => mergeInvites(prev, [incoming]))
+    const hostLabel = invite.displayName || invite.host || '주최자'
+    notify(`${hostLabel}님의 초대가 인박스에 도착했습니다.`)
+  }, [currentUser])
+
+  useEffect(() => {
+    let cancelled = false
+    fetchInviteInbox().then((result) => {
+      if (cancelled || !result.ok || !result.invites.length) return
+      setInbox((prev) => mergeInvites(prev, result.invites))
+    })
+    return () => { cancelled = true }
+  }, [currentUser])
 
   const expectedTeams = useMemo(() => {
     const value = Number(settingValue)
@@ -125,8 +152,16 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
   }
   const resetAll = () => {
     if (!window.confirm('모든 데이터를 초기화할까요?')) return
-    clearAllData(workspace); setParticipants([]); setProfiles({}); setRoles(DEFAULT_ROLES); setRoleRules({}); setHistories([]); setFairness(EMPTY_FAIRNESS); setTeams([]); setUndoStack([]); notify('현재 계정 작업공간을 초기화했습니다.')
+    clearAllData(workspace); setParticipants([]); setProfiles({}); setRoles(DEFAULT_ROLES); setRoleRules({}); setHistories([]); setFairness(EMPTY_FAIRNESS); setInbox([]); setTeams([]); setUndoStack([]); notify('현재 계정 작업공간을 초기화했습니다.')
   }
+  const joinInvite = (invite) => {
+    const displayName = currentUser?.name?.trim() || `학번 ${currentUser?.studentId ?? ''}`
+    setParticipants((prev) => prev.includes(displayName) ? prev : [...prev, displayName])
+    setInbox((prev) => prev.map((item) => item.token === invite.token ? { ...item, seenAt: Date.now() } : item))
+    if (invite.remoteId) markInviteRead(invite.remoteId)
+    notify(`${invite.displayName || invite.host || '초대'}에 합류했습니다.`)
+  }
+  const dismissInvite = (invite) => setInbox((prev) => prev.filter((item) => item.token !== invite.token))
 
   return <div className="app-shell">
     <nav className="topbar"><a className="brand" href="#"><span>TM</span><strong>팀메이트</strong></a><div><span className="user-chip">{workspace.label} · 개인 작업공간</span><button className="icon-button" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? '☾' : '☀'}</button><button className="button ghost small" onClick={resetAll}>작업공간 초기화</button><button className="button ghost small" disabled={logoutPending} onClick={onLogout}>{logoutPending ? '로그아웃 중...' : '로그아웃'}</button></div></nav>
@@ -135,6 +170,8 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
     <header className="hero"><div><span className="hero-chip">TEAM MAKER · FAIR RANDOM</span><h1>팀 나누기부터 역할 배정까지,<br /><em>한 번에 공정하게.</em></h1><p>이전 조합과 참가자 속성까지 고려하는 팀플·스터디용 랜덤 팀 메이커입니다.</p></div><div className="hero-stats"><div><strong>{participants.length}</strong><span>참가자</span></div><div><strong>{teams.length}</strong><span>배정 팀</span></div><div><strong>{roles.length}</strong><span>역할</span></div></div></header>
     <main>
       <div className="setup-grid"><ParticipantSection participants={participants} profiles={profiles} onProfiles={setProfiles} onAdd={addParticipants} onRemove={(name) => setParticipants(participants.filter((item) => item !== name))} onClear={() => setParticipants([])} message={message} /><TeamSettings mode={mode} setMode={setMode} value={settingValue} setValue={setSettingValue} fairness={fairness} setFairness={setFairness} participants={participants} /></div>
+      <InviteInboxSection invites={inbox} currentUser={currentUser} onRefresh={(next) => setInbox(next)} onJoin={joinInvite} onDismiss={dismissInvite} />
+      <InviteSection currentUser={currentUser} onNotify={notify} />
       <RoleSection roles={roles} roleRules={roleRules} participants={participants} onRules={setRoleRules} onAdd={addRole} onRemove={(role) => setRoles(roles.filter((item) => item !== role))} />
       <div className="assign-banner"><div><span>READY</span><strong>{participants.length}명을 {expectedTeams || 0}개 팀으로 배정합니다.</strong></div><button className="button primary large" onClick={assignTeams}>랜덤 팀 배정하기 <span>→</span></button></div>
       <ResultSection teams={teams} roles={roles} evaluation={evaluation} canUndo={undoStack.length > 0} onUndo={() => { const previous = undoStack.at(-1); setUndoStack(undoStack.slice(0, -1)); setTeams(previous) }} onChange={changeTeams} onReroll={assignTeams} onAssignAll={() => changeTeams(teams.map((team) => assignRoles(team, roles, roleRules)), '모든 역할을 배정했습니다.')} onAssignTeam={(id) => changeTeams(teams.map((team) => team.id === id ? assignRoles(team, roles, roleRules) : team), '역할을 배정했습니다.')} onCopy={() => copyText(resultToText(teams), '결과를 복사했습니다.')} onShare={() => copyText(shareUrl(), '공유 링크를 복사했습니다.')} onQr={async () => setQr(await QRCode.toDataURL(shareUrl(), { width: 320, margin: 2 }))} onDownload={() => download(resultToText(teams), `팀-배정-${new Date().toISOString().slice(0, 10)}.txt`)} />

@@ -9,6 +9,7 @@ const KEYS = {
   profiles: 'team-randomizer-profiles',
   roleRules: 'team-randomizer-role-rules',
   settings: 'team-randomizer-settings',
+  inbox: 'team-randomizer-inbox',
 }
 
 export function getUserWorkspace(user) {

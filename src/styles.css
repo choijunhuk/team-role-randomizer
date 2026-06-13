@@ -90,6 +90,18 @@ textarea { resize: vertical; min-height: 96px; width: 100%; }
 .notice.success { color: #15803d; background: #dcfce7; }
 .notice.warning { color: #a16207; background: #fef9c3; }
 .notice.error { color: #be123c; background: #ffe4e6; }
+.muted { color: var(--muted); font-size: 12px; font-weight: 500; }
+.invite-message { width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-soft); color: var(--text); margin-top: 12px; }
+.invite-link { margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: var(--panel-soft); border: 1px dashed var(--line); word-break: break-all; }
+.invite-link code { font-size: 12px; color: var(--text); }
+.invite-actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.invite-inbox { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.invite-card { border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; background: var(--panel-soft); display: flex; flex-direction: column; gap: 8px; }
+.invite-card.is-new { border-color: var(--primary); box-shadow: 0 4px 14px rgba(99, 91, 255, 0.12); }
+.invite-card header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.invite-card p { margin: 0; font-size: 13px; color: var(--text); white-space: pre-wrap; }
+.invite-card footer { display: flex; gap: 8px; align-items: center; }
+.button.small { padding: 6px 12px; font-size: 12px; border-radius: 9px; }
 .segmented { display: grid; grid-template-columns: 1fr 1fr; background: var(--panel-soft); border: 1px solid var(--line); border-radius: 13px; padding: 4px; }
 .segmented button { border: 0; border-radius: 9px; padding: 10px; background: transparent; color: var(--muted); font-weight: 700; }
 .segmented button.active { background: var(--panel); color: var(--primary); box-shadow: 0 3px 12px rgba(0,0,0,.08); }
