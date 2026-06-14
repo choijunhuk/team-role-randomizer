@@ -2,7 +2,22 @@ import { useState } from 'react'
 import Section from './Section'
 import { buildInviteUrl, parseStudentIds, postInviteNotification } from '../utils/invite'
 
-export default function InviteSection({ currentUser, onNotify }) {
+const STATUS_LABEL = {
+  generated: '링크 생성',
+  sent: '알림 전송',
+  failed: '전송 실패',
+}
+
+const formatTime = (value) => {
+  if (!value) return ''
+  try {
+    return new Intl.DateTimeFormat('ko-KR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value))
+  } catch {
+    return ''
+  }
+}
+
+export default function InviteSection({ currentUser, onNotify, sentInvites = [], onRecordSentInvite }) {
   const [raw, setRaw] = useState('')
   const [message, setMessage] = useState('')
   const [pending, setPending] = useState(false)
@@ -25,6 +40,7 @@ export default function InviteSection({ currentUser, onNotify }) {
       displayName: currentUser?.name ?? '',
     })
     setInviteUrl(url)
+    onRecordSentInvite?.({ studentIds, message, inviteUrl: url, status: 'generated', createdAt: Date.now(), updatedAt: Date.now() })
     return url
   }
 
@@ -54,6 +70,16 @@ export default function InviteSection({ currentUser, onNotify }) {
     if (result.ok) {
       const accepted = result.accepted ?? studentIds.length
       const unknownCount = result.unknown?.length ?? 0
+      onRecordSentInvite?.({
+        studentIds,
+        message,
+        inviteUrl: url,
+        status: 'sent',
+        accepted,
+        unknown: result.unknown ?? [],
+        rejected: result.rejected ?? 0,
+        updatedAt: Date.now(),
+      })
       const detail = unknownCount > 0
         ? ` (등록되지 않은 학번 ${unknownCount}명 제외: ${result.unknown.slice(0, 3).join(', ')}${unknownCount > 3 ? '…' : ''})`
         : ''
@@ -68,6 +94,7 @@ export default function InviteSection({ currentUser, onNotify }) {
         : result.reason === 'network'
           ? '서버에 연결할 수 없습니다. 링크를 직접 공유해주세요.'
           : '알림 전송에 실패했습니다. 링크를 직접 공유해주세요.'
+    onRecordSentInvite?.({ studentIds, message, inviteUrl: url, status: 'failed', reason: result.reason, updatedAt: Date.now() })
     setNotice({ type: 'warning', text: reason })
   }
 
@@ -109,6 +136,23 @@ export default function InviteSection({ currentUser, onNotify }) {
           {pending ? '알림 전송 중...' : 'COMS 알림 보내기'}
         </button>
       </div>
+      {sentInvites.length > 0 && (
+        <div className="sent-invite-list">
+          <strong>최근 보낸 초대</strong>
+          {sentInvites.slice(0, 5).map((invite) => (
+            <article className={`sent-invite-item ${invite.status}`} key={invite.token}>
+              <div>
+                <span>{STATUS_LABEL[invite.status] ?? invite.status}</span>
+                <strong>{invite.targetCount}명 대상</strong>
+                <small>{formatTime(invite.updatedAt || invite.createdAt)}</small>
+              </div>
+              <p>{invite.message || '메시지 없음'}</p>
+              {invite.status === 'sent' && <small>성공 {invite.accepted}명 · 미등록 {invite.unknown.length}명 · 거절 {invite.rejected}건</small>}
+              {invite.status === 'failed' && <small>링크는 그대로 사용할 수 있습니다.</small>}
+            </article>
+          ))}
+        </div>
+      )}
       {notice && <div className={`notice ${notice.type}`}>{notice.text}</div>}
     </Section>
   )

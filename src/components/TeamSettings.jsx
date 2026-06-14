@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { X } from 'lucide-react'
 import Section from './Section'
 
-export default function TeamSettings({ mode, setMode, value, setValue, fairness, setFairness, participants }) {
+export default function TeamSettings({ mode, setMode, value, setValue, fairness, setFairness, participants, constraintReport }) {
   const [pair, setPair] = useState({ avoidPairs: ['', ''], preferPairs: ['', ''] })
   const addPair = (type) => {
     const values = pair[type]
@@ -26,6 +26,12 @@ export default function TeamSettings({ mode, setMode, value, setValue, fairness,
         </div>
         <div className="fixed-list"><strong>고정 팀 지정</strong>{participants.map((name) => <label key={name}><span>{name}</span><input type="number" min="1" placeholder="팀 번호" value={fairness.fixedTeams[name] ?? ''} onChange={(e) => setFairness({ ...fairness, fixedTeams: { ...fairness.fixedTeams, [name]: e.target.value } })} /></label>)}</div>
       </details>
+      {(constraintReport?.errors?.length > 0 || constraintReport?.warnings?.length > 0) && (
+        <div className="constraint-report">
+          {constraintReport.errors.map((item) => <div className="notice error" key={item}>{item}</div>)}
+          {constraintReport.warnings.map((item) => <div className="notice warning" key={item}>{item}</div>)}
+        </div>
+      )}
     </Section>
   )
 }

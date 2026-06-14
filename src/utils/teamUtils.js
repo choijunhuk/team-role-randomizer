@@ -8,6 +8,7 @@ export function shuffle(items) {
 }
 
 const hasPair = (pairs, first, second) => pairs.some((pair) => pair.includes(first) && pair.includes(second))
+const pairKey = (first, second) => [first, second].sort().join('|')
 
 export function evaluateTeams(teams, fairness = {}, histories = [], profiles = {}) {
   const avoidPairs = fairness.avoidPairs ?? []
@@ -15,21 +16,34 @@ export function evaluateTeams(teams, fairness = {}, histories = [], profiles = {
   const priorPairs = new Map()
   histories.forEach((history) => history.teams?.forEach((team) => team.members?.forEach((member, index, members) => {
     members.slice(index + 1).forEach((other) => {
-      const key = [member.name, other.name].sort().join('|')
+      const key = pairKey(member.name, other.name)
       priorPairs.set(key, (priorPairs.get(key) ?? 0) + 1)
     })
   })))
 
   let score = 0
   const violations = []
+  const breakdown = { avoidViolations: 0, preferMatches: 0, repeatPenalty: 0, balancePenalty: 0, score: 0 }
+  const details = { preferMatches: [], repeatedPairs: [], balanceClusters: [] }
   teams.forEach((team) => {
     team.forEach((person, index) => team.slice(index + 1).forEach((other) => {
       if (hasPair(avoidPairs, person, other)) {
         score += 1000
+        breakdown.avoidViolations += 1
         violations.push(`${person}님과 ${other}님이 같은 팀 금지 조건을 위반했습니다.`)
       }
-      if (hasPair(preferPairs, person, other)) score -= 30
-      score += (priorPairs.get([person, other].sort().join('|')) ?? 0) * Number(fairness.repeatWeight ?? 8)
+      if (hasPair(preferPairs, person, other)) {
+        score -= 30
+        breakdown.preferMatches += 1
+        details.preferMatches.push({ pair: [person, other].sort(), bonus: 30 })
+      }
+      const repeatCount = priorPairs.get(pairKey(person, other)) ?? 0
+      const repeatPenalty = repeatCount * Number(fairness.repeatWeight ?? 8)
+      if (repeatPenalty > 0) {
+        score += repeatPenalty
+        breakdown.repeatPenalty += repeatPenalty
+        details.repeatedPairs.push({ pair: [person, other].sort(), count: repeatCount, penalty: repeatPenalty })
+      }
     }))
 
     ;(fairness.balanceFields ?? []).forEach((field) => {
@@ -38,11 +52,59 @@ export function evaluateTeams(teams, fairness = {}, histories = [], profiles = {
         const value = profiles[name]?.[field]?.trim()
         if (value) counts[value] = (counts[value] ?? 0) + 1
       })
-      score += Object.values(counts).reduce((sum, count) => sum + Math.max(0, count - 1) * 6, 0)
+      Object.entries(counts).forEach(([value, count]) => {
+        const penalty = Math.max(0, count - 1) * 6
+        if (penalty > 0) {
+          score += penalty
+          breakdown.balancePenalty += penalty
+          details.balanceClusters.push({ field, value, count, penalty })
+        }
+      })
     })
   })
 
-  return { score, violations: [...new Set(violations)] }
+  breakdown.score = score
+  return { score, violations: [...new Set(violations)], breakdown, details }
+}
+
+export function validateTeamConstraints(participants, teamCount, fairness = {}) {
+  const count = Math.max(1, Math.min(Number(teamCount) || 1, participants.length || 1))
+  const capacities = Array.from({ length: count }, (_, index) =>
+    Math.floor(participants.length / count) + (index < participants.length % count ? 1 : 0),
+  )
+  const fixedByTeam = new Map()
+  Object.entries(fairness.fixedTeams ?? {}).forEach(([name, teamNumber]) => {
+    const teamIndex = Number(teamNumber) - 1
+    if (!participants.includes(name) || teamIndex < 0 || teamIndex >= count) return
+    const list = fixedByTeam.get(teamIndex) ?? []
+    list.push(name)
+    fixedByTeam.set(teamIndex, list)
+  })
+
+  const errors = []
+  fixedByTeam.forEach((names, teamIndex) => {
+    if (names.length > capacities[teamIndex]) {
+      errors.push(`${teamIndex + 1}팀에 고정된 참가자가 정원 ${capacities[teamIndex]}명을 초과했습니다.`)
+    }
+  })
+
+  ;(fairness.avoidPairs ?? []).forEach(([first, second]) => {
+    const firstTeam = Number(fairness.fixedTeams?.[first])
+    const secondTeam = Number(fairness.fixedTeams?.[second])
+    if (firstTeam && firstTeam === secondTeam && participants.includes(first) && participants.includes(second)) {
+      errors.push(`${first}님과 ${second}님은 같은 ${firstTeam}팀에 고정되어 같은 팀 금지 조건을 만족할 수 없습니다.`)
+    }
+  })
+
+  const warnings = []
+  if ((fairness.avoidPairs ?? []).length) {
+    warnings.push(`금지 조건 ${(fairness.avoidPairs ?? []).length}개가 있어 무작위 시도 후에도 위반이 남을 수 있습니다.`)
+  }
+  if ((fairness.balanceFields ?? []).length) {
+    warnings.push('속성 균형은 입력된 참가자 속성만 기준으로 계산됩니다.')
+  }
+
+  return { errors, warnings }
 }
 
 function makeCandidate(participants, teamCount, fairness) {

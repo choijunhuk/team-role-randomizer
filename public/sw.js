@@ -1,3 +1,32 @@
-const CACHE = 'teammate-v1'
-self.addEventListener('install', (event) => event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(['/team-randomizer/']))))
-self.addEventListener('fetch', (event) => event.respondWith(fetch(event.request).catch(() => caches.match(event.request))))
+const CACHE = 'teammate-v2'
+const SHELL = '/team-randomizer/'
+const STATIC_ASSETS = [SHELL, '/team-randomizer/manifest.webmanifest', '/team-randomizer/favicon.svg']
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(STATIC_ASSETS)))
+  self.skipWaiting()
+})
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)))))
+  self.clients.claim()
+})
+
+self.addEventListener('fetch', (event) => {
+  const { request } = event
+  const url = new URL(request.url)
+  if (request.method !== 'GET' || url.pathname.startsWith('/api/')) return
+
+  if (request.mode === 'navigate') {
+    event.respondWith(fetch(request).catch(() => caches.match(SHELL)))
+    return
+  }
+
+  if (url.origin === location.origin && url.pathname.startsWith('/team-randomizer/')) {
+    event.respondWith(caches.match(request).then((cached) => cached ?? fetch(request).then((response) => {
+      const copy = response.clone()
+      caches.open(CACHE).then((cache) => cache.put(request, copy))
+      return response
+    })))
+  }
+})

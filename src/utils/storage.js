@@ -10,6 +10,7 @@ const KEYS = {
   roleRules: 'team-randomizer-role-rules',
   settings: 'team-randomizer-settings',
   inbox: 'team-randomizer-inbox',
+  sentInvites: 'team-randomizer-sent-invites',
 }
 
 export function getUserWorkspace(user) {

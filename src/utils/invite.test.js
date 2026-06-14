@@ -10,6 +10,7 @@ import {
   markAllNotificationsRead,
   matchesStudentId,
   mergeInvites,
+  mergeSentInvites,
   normalizeStudentId,
   parseStudentIds,
   postInviteNotification,
@@ -225,5 +226,37 @@ describe('invite utilities', () => {
       headers: { 'X-Requested-With': 'XMLHttpRequest' },
     })
     expect(result).toEqual({ ok: true, status: 204 })
+  })
+
+  it('merges sent invites by token while preserving normalized recipients', () => {
+    const generated = mergeSentInvites([], [{
+      studentIds: ['2025-1234', '20251234', '20259999'],
+      message: '같이해요',
+      inviteUrl: 'https://example.test/#invite=abc',
+      status: 'generated',
+      createdAt: 10,
+    }])
+    const sent = mergeSentInvites(generated, [{
+      studentIds: ['20251234', '20259999'],
+      message: '같이해요',
+      inviteUrl: 'https://example.test/#invite=abc',
+      status: 'sent',
+      accepted: 1,
+      unknown: ['20259999'],
+      rejected: 0,
+      updatedAt: 20,
+    }])
+
+    expect(sent).toHaveLength(1)
+    expect(sent[0]).toMatchObject({
+      studentIds: ['20251234', '20259999'],
+      targetCount: 2,
+      status: 'sent',
+      accepted: 1,
+      unknown: ['20259999'],
+      rejected: 0,
+      createdAt: 10,
+      updatedAt: 20,
+    })
   })
 })

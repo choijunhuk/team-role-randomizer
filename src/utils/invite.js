@@ -118,6 +118,54 @@ export function inviteToken(invite) {
   return `local-${(hash >>> 0).toString(36)}`
 }
 
+function hashSeed(seed) {
+  let hash = 0
+  for (let index = 0; index < seed.length; index += 1) {
+    hash = (hash * 31 + seed.charCodeAt(index)) | 0
+  }
+  return (hash >>> 0).toString(36)
+}
+
+function sentInviteToken(invite) {
+  if (invite?.token) return String(invite.token)
+  const recipients = (invite?.studentIds ?? []).map(normalizeStudentId).filter(Boolean).sort().join(',')
+  return `sent-${hashSeed(`${invite?.inviteUrl ?? ''}|${recipients}|${invite?.message ?? ''}`)}`
+}
+
+function normalizeSentInvite(raw) {
+  if (!raw) return null
+  const rawStudentIds = raw.studentIds ?? []
+  const studentIds = parseStudentIds(Array.isArray(rawStudentIds) ? rawStudentIds.join('\n') : rawStudentIds)
+  if (!studentIds.length) return null
+  const createdAt = Number(raw.createdAt ?? raw.issuedAt ?? Date.now())
+  const updatedAt = Number(raw.updatedAt ?? Date.now())
+  return {
+    token: sentInviteToken({ ...raw, studentIds }),
+    studentIds,
+    targetCount: studentIds.length,
+    message: String(raw.message ?? '').slice(0, 300),
+    inviteUrl: String(raw.inviteUrl ?? raw.acceptUrl ?? ''),
+    status: ['generated', 'sent', 'failed'].includes(raw.status) ? raw.status : 'generated',
+    accepted: Number(raw.accepted ?? 0),
+    unknown: Array.isArray(raw.unknown) ? raw.unknown.map(normalizeStudentId).filter(Boolean) : [],
+    rejected: Number(raw.rejected ?? 0),
+    reason: raw.reason ? String(raw.reason) : '',
+    createdAt,
+    updatedAt,
+  }
+}
+
+export function mergeSentInvites(existing = [], incoming = []) {
+  const seen = new Map()
+  ;[...existing, ...incoming].forEach((raw) => {
+    const invite = normalizeSentInvite(raw)
+    if (!invite) return
+    const prior = seen.get(invite.token)
+    seen.set(invite.token, prior ? { ...prior, ...invite, createdAt: prior.createdAt } : invite)
+  })
+  return [...seen.values()].sort((a, b) => (b.updatedAt ?? b.createdAt ?? 0) - (a.updatedAt ?? a.createdAt ?? 0))
+}
+
 function parseIssuedAt(value) {
   if (value == null) return Date.now()
   if (typeof value === 'number') return value

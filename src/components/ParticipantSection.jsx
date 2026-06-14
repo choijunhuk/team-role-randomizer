@@ -1,13 +1,30 @@
 import { useState } from 'react'
 import Section from './Section'
+import RosterPicker from './RosterPicker'
+import { useRoster } from '../hooks/useRoster'
 
 const EXAMPLES = ['김민수', '이서연', '박지훈', '최준혁', '정하은', '강민재', '윤지우', '한도윤']
 
-export default function ParticipantSection({ participants, profiles, onProfiles, onAdd, onRemove, onClear, message }) {
+export default function ParticipantSection({ participants, profiles, onProfiles, onAdd, onRemove, onClear, message, currentUser }) {
   const [input, setInput] = useState('')
   const [expanded, setExpanded] = useState('')
+  const roster = useRoster(currentUser)
   const submit = () => onAdd(input) && setInput('')
   const update = (name, field, value) => onProfiles({ ...profiles, [name]: { ...profiles[name], [field]: value } })
+  const addFromRoster = (members) => {
+    const fresh = members.filter((member) => !participants.includes(member.name))
+    if (!fresh.length) { onAdd(''); return }
+    if (!onAdd(fresh.map((member) => member.name).join('\n'))) return
+    const profileUpdates = {}
+    fresh.forEach((member) => {
+      const existing = profiles[member.name] ?? {}
+      const next = { ...existing }
+      if (member.studentId) next.studentId = member.studentId
+      if (member.generation) next.generation = member.generation
+      profileUpdates[member.name] = next
+    })
+    onProfiles({ ...profiles, ...profileUpdates })
+  }
 
   return (
     <Section number="01" title="참가자 입력" description="줄바꿈, 쉼표 또는 엑셀에서 복사한 이름을 한 번에 추가할 수 있습니다." actions={<button className="button ghost small" onClick={() => onAdd(EXAMPLES.join('\n'))}>예시 추가</button>}>
@@ -15,6 +32,17 @@ export default function ParticipantSection({ participants, profiles, onProfiles,
         <textarea value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !input.includes('\n')) { event.preventDefault(); submit() } }} placeholder={'김민수\n이서연, 박지훈'} rows="3" />
         <button className="button primary" onClick={submit}>추가</button>
       </div>
+      {roster.eligible && (
+        <RosterPicker
+          members={roster.members}
+          loading={roster.loading}
+          error={roster.error}
+          loaded={roster.loaded}
+          onRefresh={roster.refresh}
+          participants={participants}
+          onAddMembers={addFromRoster}
+        />
+      )}
       {message && <div className={`notice ${message.type}`}>{message.text}</div>}
       <div className="list-toolbar"><strong>참가자 {participants.length}명</strong>{participants.length > 0 && <button className="text-button danger" onClick={onClear}>전체 삭제</button>}</div>
       <div className="participant-list">
