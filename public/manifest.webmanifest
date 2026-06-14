@@ -6,5 +6,13 @@
   "display": "standalone",
   "background_color": "#f5f6fa",
   "theme_color": "#635bff",
-  "description": "팀플과 스터디를 위한 랜덤 팀 및 역할 배정 도구"
+  "description": "팀플과 스터디를 위한 랜덤 팀 및 역할 배정 도구",
+  "icons": [
+    {
+      "src": "/team-randomizer/teamrandom.png",
+      "sizes": "760x760",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
 }

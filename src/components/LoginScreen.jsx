@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import BrandLogo from './BrandLogo'
 
 export default function LoginScreen({ error, pending, onLogin }) {
   const [identifier, setIdentifier] = useState('')
@@ -13,7 +14,7 @@ export default function LoginScreen({ error, pending, onLogin }) {
 
   return <main className="auth-page">
     <section className="auth-card">
-      <a className="brand auth-brand" href="/team-randomizer/"><span>TM</span><strong>팀메이트</strong></a>
+      <BrandLogo className="auth-brand" />
       <div>
         <span className="hero-chip">COMS ACCOUNT</span>
         <h1>로그인하고<br />팀 배정을 시작하세요.</h1>
