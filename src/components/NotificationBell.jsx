@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Bell } from 'lucide-react'
 import { fetchAllNotifications, markAllNotificationsRead, markInviteRead } from '../utils/invite'
 
 const TYPE_LABEL = {
@@ -78,7 +79,7 @@ export default function NotificationBell({ onInvite }) {
         onClick={() => setOpen((value) => !value)}
         aria-label={`알림 ${unread}건`}
       >
-        <span aria-hidden="true">🔔</span>
+        <Bell size={15} aria-hidden="true" />
         {unread > 0 && <span className="bell-badge">{unread > 99 ? '99+' : unread}</span>}
       </button>
       {open && (

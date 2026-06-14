@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { X } from 'lucide-react'
 import Section from './Section'
 
 export default function TeamSettings({ mode, setMode, value, setValue, fairness, setFairness, participants }) {
@@ -21,7 +22,7 @@ export default function TeamSettings({ mode, setMode, value, setValue, fairness,
           {['grade', 'major', 'level'].map((field) => <label key={field}><input type="checkbox" checked={(fairness.balanceFields ?? []).includes(field)} onChange={(e) => setFairness({ ...fairness, balanceFields: e.target.checked ? [...(fairness.balanceFields ?? []), field] : (fairness.balanceFields ?? []).filter((item) => item !== field) })} /> {({ grade: '학년', major: '전공', level: '수준' })[field]} 균형</label>)}
         </div>
         <div className="fairness-grid">
-          {['avoidPairs', 'preferPairs'].map((type) => <div className="pair-editor" key={type}><strong>{type === 'avoidPairs' ? '같은 팀 금지' : '같은 팀 선호'}</strong><div className="pair-inputs">{[0, 1].map((index) => <select key={index} value={pair[type][index]} onChange={(e) => setPair({ ...pair, [type]: pair[type].map((value, i) => i === index ? e.target.value : value) })}><option value="">사람 {index + 1}</option>{participants.map((name) => <option key={name}>{name}</option>)}</select>)}<button className="button ghost small" onClick={() => addPair(type)}>추가</button></div><div className="mini-tags">{fairness[type].map((item, index) => <span key={item.join()}>{item.join(' · ')} <button onClick={() => setFairness({ ...fairness, [type]: fairness[type].filter((_, i) => i !== index) })}>×</button></span>)}</div></div>)}
+          {['avoidPairs', 'preferPairs'].map((type) => <div className="pair-editor" key={type}><strong>{type === 'avoidPairs' ? '같은 팀 금지' : '같은 팀 선호'}</strong><div className="pair-inputs">{[0, 1].map((index) => <select key={index} value={pair[type][index]} onChange={(e) => setPair({ ...pair, [type]: pair[type].map((value, i) => i === index ? e.target.value : value) })}><option value="">사람 {index + 1}</option>{participants.map((name) => <option key={name}>{name}</option>)}</select>)}<button className="button ghost small" onClick={() => addPair(type)}>추가</button></div><div className="mini-tags">{fairness[type].map((item, index) => <span key={item.join()}>{item.join(' · ')} <button aria-label={`${item.join(', ')} 조건 삭제`} onClick={() => setFairness({ ...fairness, [type]: fairness[type].filter((_, i) => i !== index) })}><X size={12} aria-hidden="true" /></button></span>)}</div></div>)}
         </div>
         <div className="fixed-list"><strong>고정 팀 지정</strong>{participants.map((name) => <label key={name}><span>{name}</span><input type="number" min="1" placeholder="팀 번호" value={fairness.fixedTeams[name] ?? ''} onChange={(e) => setFairness({ ...fairness, fixedTeams: { ...fairness.fixedTeams, [name]: e.target.value } })} /></label>)}</div>
       </details>
