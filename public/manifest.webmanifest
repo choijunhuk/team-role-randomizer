@@ -9,7 +9,7 @@
   "description": "팀플과 스터디를 위한 랜덤 팀 및 역할 배정 도구",
   "icons": [
     {
-      "src": "/team-randomizer/teamrandom.png?v=20260615",
+      "src": "/team-randomizer/teamrandom-icon.png?v=20260615-rounded",
       "sizes": "760x760",
       "type": "image/png",
       "purpose": "any maskable"
