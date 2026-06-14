@@ -7,6 +7,7 @@ import ResultSection from './components/ResultSection'
 import HistorySection from './components/HistorySection'
 import InviteSection from './components/InviteSection'
 import InviteInboxSection from './components/InviteInboxSection'
+import NotificationBell from './components/NotificationBell'
 import { assignRoles, createTeams, decodeShareData, encodeShareData, resultToText } from './utils/teamUtils'
 import { clearAllData, getUserWorkspace, hasLegacyData, importLegacyData, loadData, saveData } from './utils/storage'
 import { clearInviteHash, fetchInviteInbox, inviteToken, markInviteRead, matchesStudentId, mergeInvites, readInviteFromLocation } from './utils/invite'
@@ -168,7 +169,7 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
   const dismissInvite = (invite) => setInbox((prev) => prev.filter((item) => item.token !== invite.token))
 
   return <div className="app-shell">
-    <nav className="topbar"><a className="brand" href="#"><span>TM</span><strong>팀메이트</strong></a><div><span className="user-chip">{workspace.label} · 개인 작업공간</span><button className="icon-button" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? '☾' : '☀'}</button><button className="button ghost small" onClick={resetAll}>작업공간 초기화</button><button className="button ghost small" disabled={logoutPending} onClick={onLogout}>{logoutPending ? '로그아웃 중...' : '로그아웃'}</button></div></nav>
+    <nav className="topbar"><a className="brand" href="#"><span>TM</span><strong>팀메이트</strong></a><div><span className="user-chip">{workspace.label} · 개인 작업공간</span><NotificationBell onInvite={(item) => { const incoming = { studentIds: [currentUser?.studentId].filter(Boolean), message: item.message, host: item.actorStudentId, displayName: item.actorLabel, issuedAt: Date.parse(item.createdAt) || Date.now(), inviteUrl: item.acceptUrl, id: item.id }; setInbox((prev) => mergeInvites(prev, [incoming])); notify(`${item.actorLabel || '초대'} 항목을 인박스에 추가했습니다.`) }} /><button className="icon-button" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? '☾' : '☀'}</button><button className="button ghost small" onClick={resetAll}>작업공간 초기화</button><button className="button ghost small" disabled={logoutPending} onClick={onLogout}>{logoutPending ? '로그아웃 중...' : '로그아웃'}</button></div></nav>
     {logoutError && <div className="global-notice notice error" role="alert">{logoutError}</div>}
     {legacyDataAvailable && <div className="global-notice notice warning"><span>이 브라우저에 로그인 전 공용 데이터가 있습니다.</span><button className="button ghost small" onClick={importLegacyWorkspace}>현재 계정으로 가져오기</button></div>}
     <header className="hero"><div><span className="hero-chip">TEAM MAKER · FAIR RANDOM</span><h1>팀 나누기부터 역할 배정까지,<br /><em>한 번에 공정하게.</em></h1><p>이전 조합과 참가자 속성까지 고려하는 팀플·스터디용 랜덤 팀 메이커입니다.</p></div><div className="hero-stats"><div><strong>{participants.length}</strong><span>참가자</span></div><div><strong>{teams.length}</strong><span>배정 팀</span></div><div><strong>{roles.length}</strong><span>역할</span></div></div></header>

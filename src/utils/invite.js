@@ -171,6 +171,51 @@ export async function fetchInviteInbox(fetcher = fetch) {
   }
 }
 
+export async function fetchAllNotifications(fetcher = fetch) {
+  try {
+    const response = await fetcher(INBOX_PATH, {
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
+    if (response.status === 401 || response.status === 403) {
+      return { ok: false, status: response.status, reason: 'unauthorized', items: [] }
+    }
+    if (response.status === 404) return { ok: false, status: 404, reason: 'endpoint-missing', items: [] }
+    if (!response.ok) return { ok: false, status: response.status, reason: 'request-failed', items: [] }
+    const data = await response.json().catch(() => null)
+    const list = Array.isArray(data) ? data : Array.isArray(data?.invites) ? data.invites : []
+    const items = list.map((raw) => ({
+      id: raw?.id == null ? null : String(raw.id),
+      type: String(raw?.type ?? ''),
+      message: String(raw?.message ?? ''),
+      actorLabel: String(raw?.actorLabel ?? ''),
+      actorStudentId: String(raw?.actorStudentId ?? ''),
+      acceptUrl: String(raw?.acceptUrl ?? ''),
+      postId: raw?.postId ?? null,
+      commentId: raw?.commentId ?? null,
+      noticeId: raw?.noticeId ?? null,
+      read: Boolean(raw?.read),
+      createdAt: raw?.createdAt ?? null,
+    })).filter((item) => item.id)
+    return { ok: true, status: response.status, items }
+  } catch {
+    return { ok: false, status: 0, reason: 'network', items: [] }
+  }
+}
+
+export async function markAllNotificationsRead(fetcher = fetch) {
+  try {
+    const response = await fetcher(`${INBOX_PATH}/read-all`, {
+      method: 'PATCH',
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
+    return { ok: response.ok, status: response.status }
+  } catch {
+    return { ok: false, status: 0, reason: 'network' }
+  }
+}
+
 export async function markInviteRead(remoteId, fetcher = fetch) {
   if (!remoteId) return { ok: false, status: 0, reason: 'no-id' }
   try {

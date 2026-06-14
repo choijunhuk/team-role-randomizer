@@ -4,8 +4,10 @@ import {
   INVITE_NOTIFY_PATH,
   decodeInvite,
   encodeInvite,
+  fetchAllNotifications,
   fetchInviteInbox,
   inviteToken,
+  markAllNotificationsRead,
   matchesStudentId,
   mergeInvites,
   normalizeStudentId,
@@ -191,5 +193,37 @@ describe('invite utilities', () => {
 
   it('exposes buildResponse helper without breaking inbox tests', () => {
     expect(typeof buildResponse).toBe('function')
+  })
+
+  it('fetches all notification types for the bell, normalizing fields', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ([
+        { id: 7, type: 'EXTERNAL_INVITE', actorLabel: '홍길동', actorStudentId: '20240001', message: '같이해요', acceptUrl: 'https://example.test/', read: false, createdAt: '2026-06-14T05:00:00' },
+        { id: 8, type: 'NOTICE_CREATED', message: '새 공지', read: true, createdAt: '2026-06-13T00:00:00' },
+        { type: 'IGNORED_BECAUSE_NO_ID', message: 'skip' },
+      ]),
+    })
+    const result = await fetchAllNotifications(fetcher)
+    expect(fetcher).toHaveBeenCalledWith(INVITE_INBOX_PATH, {
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
+    expect(result.ok).toBe(true)
+    expect(result.items).toHaveLength(2)
+    expect(result.items[0]).toMatchObject({ id: '7', type: 'EXTERNAL_INVITE', actorStudentId: '20240001', read: false })
+    expect(result.items[1]).toMatchObject({ id: '8', type: 'NOTICE_CREATED', read: true })
+  })
+
+  it('marks all notifications read via PATCH /api/notifications/read-all', async () => {
+    const fetcher = vi.fn().mockResolvedValue({ ok: true, status: 204 })
+    const result = await markAllNotificationsRead(fetcher)
+    expect(fetcher).toHaveBeenCalledWith(`${INVITE_INBOX_PATH}/read-all`, {
+      method: 'PATCH',
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
+    expect(result).toEqual({ ok: true, status: 204 })
   })
 })
