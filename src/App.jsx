@@ -9,7 +9,7 @@ import InviteSection from './components/InviteSection'
 import InviteInboxSection from './components/InviteInboxSection'
 import { assignRoles, createTeams, decodeShareData, encodeShareData, resultToText } from './utils/teamUtils'
 import { clearAllData, getUserWorkspace, hasLegacyData, importLegacyData, loadData, saveData } from './utils/storage'
-import { fetchInviteInbox, inviteToken, markInviteRead, matchesStudentId, mergeInvites, readInviteFromLocation } from './utils/invite'
+import { clearInviteHash, fetchInviteInbox, inviteToken, markInviteRead, matchesStudentId, mergeInvites, readInviteFromLocation } from './utils/invite'
 
 const DEFAULT_ROLES = ['발표자', '서기', '자료조사', '발표자료 제작', '코드 작성', '코드 리뷰', '시간 관리', '질문 담당']
 const EMPTY_FAIRNESS = { fixedTeams: {}, avoidPairs: [], preferPairs: [], repeatWeight: 8, balanceFields: [] }
@@ -56,27 +56,31 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
     } catch { /* Ignore malformed shared links. */ }
   }, [])
 
+  const currentStudentId = currentUser?.studentId
   useEffect(() => {
     const invite = readInviteFromLocation()
     if (!invite) return
     if (!matchesStudentId(invite, currentUser)) {
       notify(`초대 링크 대상이 아닙니다 (대상 ${invite.studentIds.length}명).`)
+      clearInviteHash()
       return
     }
     const incoming = { ...invite, token: inviteToken(invite) }
     setInbox((prev) => mergeInvites(prev, [incoming]))
     const hostLabel = invite.displayName || invite.host || '주최자'
     notify(`${hostLabel}님의 초대가 인박스에 도착했습니다.`)
-  }, [currentUser])
+    clearInviteHash()
+  }, [currentStudentId])
 
   useEffect(() => {
+    if (!currentStudentId) return
     let cancelled = false
     fetchInviteInbox().then((result) => {
       if (cancelled || !result.ok || !result.invites.length) return
       setInbox((prev) => mergeInvites(prev, result.invites))
     })
     return () => { cancelled = true }
-  }, [currentUser])
+  }, [currentStudentId])
 
   const expectedTeams = useMemo(() => {
     const value = Number(settingValue)

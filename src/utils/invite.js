@@ -32,8 +32,11 @@ export function buildInviteUrl({ studentIds, message, host, displayName }) {
     displayName: displayName ? String(displayName).slice(0, 60) : '',
     issuedAt: Date.now(),
   }
-  const base = `${location.origin}${location.pathname}`
-  return `${base}#invite=${encodeURIComponent(encodeInvite(payload))}`
+  const pathname = location.pathname.replace(/index\.html$/, '')
+  const base = `${location.origin}${pathname}`
+  const params = new URLSearchParams(location.hash.startsWith('#') ? location.hash.slice(1) : '')
+  params.set('invite', encodeInvite(payload))
+  return `${base}#${params.toString()}`
 }
 
 export function readInviteFromLocation(hash = location.hash) {
@@ -42,11 +45,20 @@ export function readInviteFromLocation(hash = location.hash) {
   if (!raw) return null
   try {
     const payload = decodeInvite(raw)
-    if (!Array.isArray(payload?.studentIds)) return null
+    if (!Array.isArray(payload?.studentIds) || payload.studentIds.length === 0) return null
     return payload
   } catch {
     return null
   }
+}
+
+export function clearInviteHash() {
+  if (typeof window === 'undefined' || !window.history?.replaceState) return
+  const params = new URLSearchParams(location.hash.startsWith('#') ? location.hash.slice(1) : '')
+  if (!params.has('invite')) return
+  params.delete('invite')
+  const next = params.toString()
+  window.history.replaceState(null, '', `${location.pathname}${location.search}${next ? `#${next}` : ''}`)
 }
 
 export function matchesStudentId(payload, user) {
@@ -70,7 +82,7 @@ export async function postInviteNotification(payload, fetcher = fetch) {
     const response = await fetcher(NOTIFY_PATH, {
       method: 'POST',
       credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
       body: JSON.stringify(body),
     })
     if (response.ok) {
@@ -120,7 +132,7 @@ function normalizeInvite(raw) {
   const invite = {
     studentIds,
     message: String(raw.message ?? '').slice(0, 300),
-    host: String(raw.host ?? raw.from ?? '').slice(0, 60),
+    host: String(raw.host ?? raw.actorStudentId ?? raw.from ?? '').slice(0, 60),
     displayName: String(raw.displayName ?? raw.actorLabel ?? raw.hostName ?? '').slice(0, 60),
     issuedAt: parseIssuedAt(raw.issuedAt ?? raw.createdAt),
     inviteUrl: String(raw.inviteUrl ?? raw.acceptUrl ?? ''),
@@ -138,7 +150,10 @@ function normalizeInvite(raw) {
 
 export async function fetchInviteInbox(fetcher = fetch) {
   try {
-    const response = await fetcher(INBOX_PATH, { credentials: 'same-origin' })
+    const response = await fetcher(INBOX_PATH, {
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
     if (response.status === 401 || response.status === 403) {
       return { ok: false, status: response.status, reason: 'unauthorized', invites: [] }
     }
@@ -162,6 +177,7 @@ export async function markInviteRead(remoteId, fetcher = fetch) {
     const response = await fetcher(`${INBOX_PATH}/${encodeURIComponent(remoteId)}/read`, {
       method: 'PATCH',
       credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
     })
     return { ok: response.ok, status: response.status }
   } catch {

@@ -52,6 +52,9 @@ export default function InviteInboxSection({ invites, onRefresh, onJoin, onDismi
             {invite.message && <p>{invite.message}</p>}
             <footer>
               <button className="button primary small" onClick={() => onJoin(invite)}>참가자로 합류</button>
+              {invite.inviteUrl && /^https?:\/\//i.test(invite.inviteUrl) && (
+                <a className="button ghost small" href={invite.inviteUrl} target="_blank" rel="noopener noreferrer">초대 링크 열기</a>
+              )}
               <button className="text-button" onClick={() => onDismiss(invite)}>숨기기</button>
             </footer>
           </article>

@@ -93,7 +93,7 @@ src/
   "acceptUrl": "https://coms.kw.ac.kr/team-randomizer/#invite=..."
 }
 ```
-응답: `{ "accepted": 2, "unknown": [], "rejected": 0 }`. `actorLabel`이 비어 있으면 서버가 발신자 이름으로 자동 채웁니다.
+응답: `{ "accepted": 2, "unknown": [], "rejected": 0 }`. `actorLabel`이 비어 있으면 서버가 발신자 이름으로 자동 채우고 100자로 자릅니다. `acceptUrl`은 `notification.external-invite.allowed-hosts` (기본 `coms.kw.ac.kr`)에 등록된 호스트만 허용됩니다. 1분당 10건, 1일 200건 발신자별 레이트 리밋이 적용됩니다. CSRF 방어를 위해 모든 호출에 `X-Requested-With: XMLHttpRequest` 헤더를 함께 보내야 합니다.
 
 `GET /api/notifications` → COMS NotificationResponse 배열. `type === "EXTERNAL_INVITE"` 항목만 인박스에 표시되며 `acceptUrl`이 초대 링크 역할을 합니다.
 

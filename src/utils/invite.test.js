@@ -14,6 +14,13 @@ import {
   readInviteFromLocation,
 } from './invite'
 
+const buildResponse = (status, body, extra = {}) => ({
+  ok: status >= 200 && status < 300,
+  status,
+  json: async () => body,
+  ...extra,
+})
+
 describe('invite utilities', () => {
   it('normalizes student ids by stripping non-alphanumerics', () => {
     expect(normalizeStudentId(' 2025-1234 ')).toBe('20251234')
@@ -46,7 +53,7 @@ describe('invite utilities', () => {
     expect(matchesStudentId(payload, {})).toBe(false)
   })
 
-  it('posts the COMS member-invite contract with recipientStudentIds and actorLabel', async () => {
+  it('posts the COMS member-invite contract with recipientStudentIds, actorLabel and X-Requested-With', async () => {
     const fetcher = vi.fn().mockResolvedValue({ ok: false, status: 404 })
     const result = await postInviteNotification({
       studentIds: ['2025-1234', '20259999'],
@@ -58,6 +65,7 @@ describe('invite utilities', () => {
     expect(fetcher).toHaveBeenCalledWith(INVITE_NOTIFY_PATH, expect.objectContaining({
       method: 'POST',
       credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
       body: JSON.stringify({
         recipientStudentIds: ['20251234', '20259999'],
         actorLabel: '홍길동',
@@ -66,6 +74,12 @@ describe('invite utilities', () => {
       }),
     }))
     expect(result).toEqual({ ok: false, status: 404, reason: 'endpoint-missing' })
+  })
+
+  it('maps 429 to request-failed so the UI can show the rate-limit warning', async () => {
+    const fetcher = vi.fn().mockResolvedValue({ ok: false, status: 429 })
+    const result = await postInviteNotification({ studentIds: ['20251234'] }, fetcher)
+    expect(result).toEqual({ ok: false, status: 429, reason: 'request-failed' })
   })
 
   it('skips network calls when no targets remain after normalization', async () => {
@@ -115,7 +129,10 @@ describe('invite utilities', () => {
       ]),
     })
     const result = await fetchInviteInbox(fetcher)
-    expect(fetcher).toHaveBeenCalledWith(INVITE_INBOX_PATH, { credentials: 'same-origin' })
+    expect(fetcher).toHaveBeenCalledWith(INVITE_INBOX_PATH, {
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
     expect(result.ok).toBe(true)
     expect(result.invites).toHaveLength(1)
     expect(result.invites[0]).toMatchObject({
@@ -152,5 +169,27 @@ describe('invite utilities', () => {
     const merged = mergeInvites([], [incoming])
     expect(merged).toHaveLength(1)
     expect(merged[0].token).toBe('coms-42')
+  })
+
+  it('hydrates host from actorStudentId on EXTERNAL_INVITE notifications', () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ([
+        { id: 99, type: 'EXTERNAL_INVITE', actorLabel: '홍길동', actorStudentId: '20240001', message: 'hi', read: false, createdAt: '2026-06-14T00:00:00', acceptUrl: 'https://example.test/' },
+      ]),
+    })
+    return fetchInviteInbox(fetcher).then((result) => {
+      expect(result.invites[0].host).toBe('20240001')
+    })
+  })
+
+  it('rejects invite hash payloads with no recipient student ids', () => {
+    const empty = encodeInvite({ v: 1, studentIds: [], message: '', host: '', displayName: '', issuedAt: 1 })
+    expect(readInviteFromLocation(`#invite=${encodeURIComponent(empty)}`)).toBeNull()
+  })
+
+  it('exposes buildResponse helper without breaking inbox tests', () => {
+    expect(typeof buildResponse).toBe('function')
   })
 })
