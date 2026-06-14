@@ -1,5 +1,5 @@
 const appBaseUrl = import.meta.env.BASE_URL || '/'
-const logoSrc = `${appBaseUrl}teamrandom.png`
+const logoSrc = `${appBaseUrl}teamrandom.png?v=20260615`
 
 export default function BrandLogo({ className = '', href = appBaseUrl }) {
   const classes = ['brand', className].filter(Boolean).join(' ')
