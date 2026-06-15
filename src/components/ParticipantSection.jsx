@@ -16,7 +16,7 @@ export const EXAMPLES = [
   '한도윤 (58기)',
 ]
 
-export default function ParticipantSection({ participants, profiles, onProfiles, onAdd, onRemove, onClear, message, currentUser }) {
+export default function ParticipantSection({ participants, profiles, onProfiles, onAdd, onRemove, onClear, message, currentUser, showStep = true }) {
   const [input, setInput] = useState('')
   const [expanded, setExpanded] = useState('')
   const roster = useRoster(currentUser)
@@ -39,7 +39,7 @@ export default function ParticipantSection({ participants, profiles, onProfiles,
   }
 
   return (
-    <Section id="participants" number="01" title="참가자 입력" description="줄바꿈, 쉼표 또는 엑셀에서 복사한 이름을 한 번에 추가할 수 있습니다." actions={<button className="button ghost small" onClick={() => onAdd(EXAMPLES.join('\n'))}>예시 추가</button>}>
+    <Section id="participants" number="01" title="참가자 입력" description="줄바꿈, 쉼표 또는 엑셀에서 복사한 이름을 한 번에 추가할 수 있습니다." showStep={showStep} actions={<button className="button ghost small" onClick={() => onAdd(EXAMPLES.join('\n'))}>예시 추가</button>}>
       <div className="input-row">
         <textarea value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !input.includes('\n')) { event.preventDefault(); submit() } }} placeholder={'김민수 (20251234)\n이서연 (24기), 박지훈'} rows="3" />
         <button className="button primary" onClick={submit}>추가</button>

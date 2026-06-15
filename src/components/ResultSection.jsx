@@ -13,7 +13,7 @@ const fairnessItems = (evaluation) => {
   ]
 }
 
-export default function ResultSection({ teams, roles, evaluation, canUndo, onUndo, onChange, onAssignAll, onAssignTeam, onCopy, onShare, onQr, onDownload, onReroll }) {
+export default function ResultSection({ teams, roles, evaluation, canUndo, onUndo, onChange, onAssignAll, onAssignTeam, onCopy, onShare, onQr, onDownload, onReroll, showStep = true }) {
   const updateTeam = (teamId, patch) => onChange(teams.map((team) => team.id === teamId ? { ...team, ...patch } : team))
   const updateMember = (teamId, name, patch) => onChange(teams.map((team) => team.id === teamId ? { ...team, members: team.members.map((member) => member.name === name ? { ...member, ...patch } : member) } : team))
   const move = (teamId, name, direction) => {
@@ -30,7 +30,7 @@ export default function ResultSection({ teams, roles, evaluation, canUndo, onUnd
     onChange(teams.map((team) => team.id === sourceId ? { ...team, members: team.members.filter((item) => item.name !== name) } : team.id === targetId ? { ...team, members: [...team.members, member] } : team))
   }
 
-  return <Section id="assignment" number="04" title="배정 결과" description="드래그하거나 화살표로 팀을 옮기고 이름과 역할을 직접 수정할 수 있습니다." className="result-section" actions={teams.length > 0 && <button className="button ghost small" onClick={onReroll}><Shuffle size={14} aria-hidden="true" />팀 다시 배정</button>}>
+  return <Section id="assignment" number="04" title="배정 결과" description="드래그하거나 화살표로 팀을 옮기고 이름과 역할을 직접 수정할 수 있습니다." className="result-section" showStep={showStep} actions={teams.length > 0 && <button className="button ghost small" onClick={onReroll}><Shuffle size={14} aria-hidden="true" />팀 다시 배정</button>}>
     {teams.length === 0 ? <div className="empty-state"><span><Sparkles size={30} aria-hidden="true" /></span><strong>아직 배정 결과가 없습니다.</strong><p>참가자와 팀 설정을 확인한 뒤 팀을 만들어보세요.</p></div> : <>
       {evaluation && <div className={`notice ${evaluation.violations.length ? 'warning' : 'success'}`}>{evaluation.violations.length ? `최선의 결과지만 조건 ${evaluation.violations.length}건을 만족하지 못했습니다: ${evaluation.violations.join(' ')}` : '금지 조건을 모두 만족하는 공정한 배정입니다.'}</div>}
       {evaluation?.breakdown && <div className="fairness-scoreboard" aria-label="공정성 점수 상세">

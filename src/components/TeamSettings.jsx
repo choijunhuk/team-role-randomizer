@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { X } from 'lucide-react'
 import Section from './Section'
 
-export default function TeamSettings({ mode, setMode, value, setValue, fairness, setFairness, participants, constraintReport }) {
+export default function TeamSettings({ mode, setMode, value, setValue, fairness, setFairness, participants, constraintReport, showStep = true }) {
   const [pair, setPair] = useState({ avoidPairs: ['', ''], preferPairs: ['', ''] })
   const addPair = (type) => {
     const values = pair[type]
@@ -12,7 +12,7 @@ export default function TeamSettings({ mode, setMode, value, setValue, fairness,
   }
 
   return (
-    <Section id="team-settings" number="02" title="팀 설정" description="균형, 이전 조합, 고정·선호 조건을 함께 고려합니다.">
+    <Section id="team-settings" number="02" title="팀 설정" description="균형, 이전 조합, 고정·선호 조건을 함께 고려합니다." showStep={showStep}>
       <div className="segmented"><button className={mode === 'count' ? 'active' : ''} onClick={() => setMode('count')}>팀 개수 기준</button><button className={mode === 'size' ? 'active' : ''} onClick={() => setMode('size')}>팀당 인원 기준</button></div>
       <label className="field"><span>{mode === 'count' ? '만들 팀 개수' : '팀당 최대 인원'}</span><input type="number" min="1" value={value} onChange={(event) => setValue(event.target.value)} /></label>
       <details className="fairness">

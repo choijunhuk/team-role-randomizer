@@ -18,7 +18,7 @@ const formatTime = (value) => {
   }
 }
 
-export default function InviteSection({ currentUser, onNotify, sentInvites = [], onRecordSentInvite, onDeleteSentInvite }) {
+export default function InviteSection({ currentUser, onNotify, sentInvites = [], onRecordSentInvite, onDeleteSentInvite, showStep = true }) {
   const [raw, setRaw] = useState('')
   const [message, setMessage] = useState('')
   const [pending, setPending] = useState(false)
@@ -124,6 +124,7 @@ export default function InviteSection({ currentUser, onNotify, sentInvites = [],
       number="01·B"
       title="초대 대상"
       description="이름 (학번) 또는 이름 (17기)로 입력하세요. 학번이 있는 대상에게만 COMS 알림을 보냅니다."
+      showStep={showStep}
       actions={targets.length > 0 && <button className="button ghost small" onClick={reset}>비우기</button>}
     >
       <div className="input-row">
