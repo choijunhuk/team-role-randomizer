@@ -12,11 +12,13 @@ import NotificationBell from './components/NotificationBell'
 import BrandLogo from './components/BrandLogo'
 import RoomSwitcher from './components/RoomSwitcher'
 import WorkspaceNav from './components/WorkspaceNav'
+import WorkspaceCommandCenter from './components/WorkspaceCommandCenter'
 import { DEFAULT_ROLES, EMPTY_FAIRNESS, useWorkspaceData } from './hooks/useWorkspaceData'
 import { useInviteState } from './hooks/useInviteState'
 import { parseParticipantInput } from './utils/participants'
 import { isAdminUser } from './utils/roster'
 import { assignRoles, createTeams, decodeShareData, encodeShareData, resultToText, validateTeamConstraints } from './utils/teamUtils'
+import { getWorkspaceInsights } from './utils/workspaceInsights'
 
 const clone = (value) => structuredClone(value)
 
@@ -40,6 +42,16 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
   }, [mode, settingValue, participants.length])
   const constraintReport = useMemo(() => validateTeamConstraints(participants, expectedTeams, fairness), [participants, expectedTeams, fairness])
   const { inbox, setInbox, sentInvites, recordSentInvite, deleteSentInvite, joinInvite, dismissInvite, addNotificationInvite, resetInvites } = useInviteState({ currentUser, workspace, setParticipants, createInviteRoom, notify })
+  const workspaceInsights = useMemo(() => getWorkspaceInsights({
+    roomName: workspace.room?.name ?? '',
+    participantsCount: participants.length,
+    expectedTeams,
+    rolesCount: roles.length,
+    inboxCount: inbox.length,
+    sentInviteCount: sentInvites.length,
+    isAdmin: showStepLabels,
+    constraintReport,
+  }), [workspace.room?.name, participants.length, expectedTeams, roles.length, inbox.length, sentInvites.length, showStepLabels, constraintReport])
 
   useEffect(() => {
     const hash = new URLSearchParams(location.hash.slice(1)).get('share')
@@ -157,7 +169,7 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
       <div>
         <span className="hero-chip">TEAM ROOM</span>
         <h1>{workspace.room?.name ?? '새 방을 만들거나 초대를 수락하세요'}</h1>
-        <p>참가자를 넣고 팀 기준만 정하면 바로 배정할 수 있습니다. 일반 회원도 명단을 제외한 팀 배정·초대·역할·기록 기능을 사용할 수 있습니다.</p>
+        <p>{showStepLabels ? '명단에서 참가자를 고르거나 직접 입력한 뒤 팀 기준을 정하면 바로 배정할 수 있습니다.' : '참가자를 넣고 팀 기준만 정하면 바로 배정할 수 있습니다. 팀 배정·초대·역할·기록 기능을 사용할 수 있습니다.'}</p>
       </div>
       <div className="hero-actions">
         <div className="hero-stats">
@@ -179,6 +191,7 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
         invites={inbox.length + sentInvites.length}
       />
       <div className="workspace-content">
+        <WorkspaceCommandCenter insights={workspaceInsights} />
         <div className="setup-grid"><ParticipantSection participants={participants} profiles={profiles} onProfiles={setProfiles} onAdd={addParticipants} onRemove={(name) => setParticipants(participants.filter((item) => item !== name))} onClear={() => setParticipants([])} message={message} currentUser={currentUser} showStep={showStepLabels} /><TeamSettings mode={mode} setMode={setMode} value={settingValue} setValue={setSettingValue} fairness={fairness} setFairness={setFairness} participants={participants} constraintReport={constraintReport} showStep={showStepLabels} /></div>
         <div className="support-grid">
           <InviteInboxSection invites={inbox} currentUser={currentUser} onRefresh={(next) => setInbox(next)} onJoin={joinInvite} onDismiss={dismissInvite} showStep={showStepLabels} />

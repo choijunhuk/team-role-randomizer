@@ -32,6 +32,8 @@ describe('App role-based workspace', () => {
     expect(markup).toContain('TEAM ROOM')
     expect(markup).toContain('랜덤 팀 배정하기')
     expect(markup).toContain('참가자 입력')
+    expect(markup).toContain('일반 회원 모드')
+    expect(markup).not.toContain('명단')
     expect(markup).not.toContain('명단 0명')
     expect(markup).not.toContain('명단 새로고침')
     expect(markup).not.toContain('STEP 01')

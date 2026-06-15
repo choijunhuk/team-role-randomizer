@@ -85,6 +85,22 @@ main { max-width: 1180px; margin: auto; padding: 0 20px 80px; }
 .workspace-nav a em { color: var(--muted); font-style: normal; font: 800 11px Manrope; }
 .setup-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(320px, .9fr); gap: 16px; align-items: start; }
 .support-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.command-center { margin-bottom: 16px; padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); box-shadow: var(--shadow); display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, .58fr); gap: 18px; align-items: stretch; }
+.command-main { min-width: 0; display: grid; align-content: center; gap: 12px; }
+.command-title { display: grid; gap: 5px; min-width: 0; }
+.command-title span { color: var(--primary); font: 800 11px Manrope; display: inline-flex; align-items: center; gap: 6px; }
+.command-title strong { min-width: 0; overflow-wrap: anywhere; font-size: 22px; line-height: 1.22; }
+.command-main p { margin: 0; color: var(--text); line-height: 1.55; font-weight: 700; }
+.command-capability { width: fit-content; max-width: 100%; display: inline-flex; align-items: center; gap: 7px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel-soft); color: var(--muted); font-size: 12px; font-weight: 700; line-height: 1.45; }
+.command-side { min-width: 0; display: grid; gap: 10px; align-content: stretch; }
+.command-status { display: flex; align-items: center; gap: 8px; padding: 11px 12px; border-radius: 10px; color: var(--primary); background: color-mix(in srgb, var(--primary) 10%, var(--panel)); font-size: 12px; font-weight: 800; }
+.status-blocked .command-status { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, var(--panel)); }
+.status-check .command-status, .status-needs-participants .command-status, .status-needs-room .command-status, .status-needs-setting .command-status { color: #a16207; background: #fef9c3; }
+.command-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
+.command-stats div { min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-soft); }
+.command-stats span, .command-stats strong { display: block; }
+.command-stats span { color: var(--muted); font-size: 10px; font-weight: 800; }
+.command-stats strong { margin-top: 3px; font: 800 14px Manrope; color: var(--text); }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 22px; margin-bottom: 16px; box-shadow: var(--shadow); }
 .panel { scroll-margin-top: 18px; }
 .section-header { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
@@ -162,6 +178,15 @@ textarea { resize: vertical; min-height: 96px; width: 100%; }
 .segmented { display: grid; grid-template-columns: 1fr 1fr; background: var(--panel-soft); border: 1px solid var(--line); border-radius: 13px; padding: 4px; }
 .segmented button { border: 0; border-radius: 9px; padding: 10px; background: transparent; color: var(--muted); font-weight: 700; }
 .segmented button.active { background: var(--panel); color: var(--primary); box-shadow: 0 3px 12px rgba(0,0,0,.08); }
+.preset-panel { display: grid; gap: 12px; margin-bottom: 16px; }
+.preset-panel > div:first-child { display: grid; gap: 4px; }
+.preset-panel > div:first-child strong { font-size: 13px; }
+.preset-panel > div:first-child span { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.preset-grid button { min-width: 0; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-soft); color: var(--text); text-align: left; display: grid; gap: 4px; }
+.preset-grid button:hover, .preset-grid button:focus-visible { border-color: color-mix(in srgb, var(--primary) 45%, var(--line)); background: color-mix(in srgb, var(--primary) 8%, var(--panel)); outline: none; }
+.preset-grid button strong { color: var(--primary); font-size: 12px; }
+.preset-grid button span { color: var(--muted); font-size: 10px; line-height: 1.45; }
 .field { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; font-size: 13px; font-weight: 700; }
 .field input { width: 100px; }
 .fairness { border-top: 1px solid var(--line); margin-top: 20px; padding-top: 18px; }
@@ -267,6 +292,7 @@ footer { color: var(--muted); text-align: center; padding: 28px; font-size: 11px
   .invite-only-layout { grid-template-columns: 1fr; }
   .workspace-nav { position: static; }
   .workspace-nav nav { grid-template-columns: repeat(3, 1fr); }
+  .command-center { grid-template-columns: 1fr; }
   .setup-grid, .support-grid, .team-grid { grid-template-columns: 1fr 1fr; }
   .setup-grid .panel:first-child { grid-column: span 2; }
 }
@@ -284,6 +310,9 @@ footer { color: var(--muted); text-align: center; padding: 28px; font-size: 11px
   .workspace-nav nav { display: flex; overflow-x: auto; }
   .workspace-nav a { min-width: 136px; }
   .workspace-nav a em { display: none; }
+  .command-center { padding: 16px; }
+  .command-stats { grid-template-columns: 1fr 1fr; }
+  .command-capability { width: 100%; border-radius: 10px; align-items: flex-start; }
   .setup-grid, .support-grid, .team-grid, .fairness-grid { grid-template-columns: 1fr; }
   .setup-grid .panel:first-child { grid-column: auto; }
   .panel { padding: 20px; border-radius: 19px; }
@@ -298,6 +327,7 @@ footer { color: var(--muted); text-align: center; padding: 28px; font-size: 11px
   .assign-banner .button { width: 100%; }
   .result-toolbar .button { flex: 1; }
   .fairness-scoreboard { grid-template-columns: 1fr 1fr; }
+  .preset-grid { grid-template-columns: 1fr; }
 }
 
 .roster-picker { margin-top: 14px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel-soft); display: flex; flex-direction: column; gap: 10px; }
