@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ROSTER_ENDPOINT, dedupeAgainst, fetchRoster, filterRoster, formatRosterParticipant, getRosterGenerationOptions, isAdminUser, rosterToCsv, searchRoster, summarizeRoster } from './roster'
+import { ROSTER_ENDPOINT, dedupeAgainst, fetchRoster, filterRoster, filterRosterByStatus, formatRosterIdentifier, formatRosterParticipant, getRosterGenerationOptions, isAdminUser, rosterToCsv, searchRoster, summarizeRoster } from './roster'
 
 describe('roster utilities', () => {
   it('fetches eligible members and normalizes fields', async () => {
@@ -104,19 +104,20 @@ describe('roster utilities', () => {
     const members = [
       { id: '1', studentId: '20251234', name: '김민수', generation: '23기' },
       { id: '2', studentId: '20240001', name: '이서연', generation: '22기' },
-      { id: '3', studentId: '', name: '졸업생', generation: '' },
+      { id: '3', studentId: '', name: '졸업생', generation: '17' },
     ]
 
     expect(summarizeRoster(members, ['이서연 (20240001)'])).toEqual({
       total: 3,
       added: 1,
       available: 2,
-      missingStudentId: 1,
+      withStudentId: 2,
+      generationOnly: 1,
       duplicateNames: 0,
       generations: [
+        { label: '17기', count: 1 },
         { label: '22기', count: 1 },
         { label: '23기', count: 1 },
-        { label: '기수 미상', count: 1 },
       ],
     })
   })
@@ -128,9 +129,28 @@ describe('roster utilities', () => {
       { id: '3', studentId: '20259999', name: '김도윤', generation: '22기' },
     ]
 
-    expect(getRosterGenerationOptions(members)).toEqual(['22기', '23기'])
+    expect(getRosterGenerationOptions([...members, { id: '4', studentId: '', name: '졸업생', generation: '17' }])).toEqual([
+      { value: '17', label: '17기' },
+      { value: '22', label: '22기' },
+      { value: '23', label: '23기' },
+    ])
     expect(filterRoster(members, { query: '김', generation: '22기' })).toEqual([members[2]])
     expect(filterRoster(members, { query: '2025', generation: '' })).toEqual([members[0], members[2]])
+  })
+
+  it('filters roster by admin summary status buttons', () => {
+    const members = [
+      { id: '1', studentId: '20251234', name: '김민수', generation: '23기' },
+      { id: '2', studentId: '20261234', name: '김민수', generation: '24기' },
+      { id: '3', studentId: '', name: '졸업생', generation: '17' },
+    ]
+
+    expect(filterRosterByStatus(members, ['김민수 (20251234)'], 'all')).toEqual(members)
+    expect(filterRosterByStatus(members, ['김민수 (20251234)'], 'available')).toEqual([members[1], members[2]])
+    expect(filterRosterByStatus(members, ['김민수 (20251234)'], 'added')).toEqual([members[0]])
+    expect(filterRosterByStatus(members, [], 'student-id')).toEqual([members[0], members[1]])
+    expect(filterRosterByStatus(members, [], 'generation-only')).toEqual([members[2]])
+    expect(filterRosterByStatus(members, [], 'duplicate-name')).toEqual([members[0], members[1]])
   })
 
   it('exports roster rows as safe CSV', () => {
@@ -158,7 +178,13 @@ describe('roster utilities', () => {
 
   it('formats roster participants with the best available identifier', () => {
     expect(formatRosterParticipant({ name: '김민수', studentId: '20251234', generation: '23기' })).toBe('김민수 (20251234)')
-    expect(formatRosterParticipant({ name: '졸업생', studentId: '', generation: '58기' })).toBe('졸업생 (58기)')
+    expect(formatRosterParticipant({ name: '졸업생', studentId: '', generation: '58' })).toBe('졸업생 (58기)')
     expect(formatRosterParticipant({ name: '기수미상', studentId: '', generation: '' })).toBe('기수미상')
+  })
+
+  it('formats roster identity metadata by student id or generation', () => {
+    expect(formatRosterIdentifier({ studentId: '20251234', generation: '23기' })).toBe('학번 20251234')
+    expect(formatRosterIdentifier({ studentId: '', generation: '17' })).toBe('기수 17기')
+    expect(formatRosterIdentifier({ studentId: '', generation: '' })).toBe('식별자 없음')
   })
 })

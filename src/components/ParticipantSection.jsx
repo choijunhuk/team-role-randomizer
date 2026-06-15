@@ -3,8 +3,18 @@ import Section from './Section'
 import RosterPicker from './RosterPicker'
 import { useRoster } from '../hooks/useRoster'
 import { formatRosterParticipant } from '../utils/roster'
+import { formatParticipantIdentifier, parseParticipantLabel } from '../utils/participants'
 
-const EXAMPLES = ['김민수', '이서연', '박지훈', '최준혁', '정하은', '강민재', '윤지우', '한도윤']
+export const EXAMPLES = [
+  '김민수 (20251234)',
+  '이서연 (20240001)',
+  '박지훈 (20230009)',
+  '최준혁 (2026402040)',
+  '정하은 (24기)',
+  '강민재 (23기)',
+  '윤지우 (22기)',
+  '한도윤 (58기)',
+]
 
 export default function ParticipantSection({ participants, profiles, onProfiles, onAdd, onRemove, onClear, message, currentUser }) {
   const [input, setInput] = useState('')
@@ -34,7 +44,7 @@ export default function ParticipantSection({ participants, profiles, onProfiles,
         <textarea value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !input.includes('\n')) { event.preventDefault(); submit() } }} placeholder={'김민수 (20251234)\n이서연 (24기), 박지훈'} rows="3" />
         <button className="button primary" onClick={submit}>추가</button>
       </div>
-      <p className="helper">동명이인은 이름 뒤에 학번 또는 기수를 붙이면 팀 배정 결과에서도 구분됩니다.</p>
+      <p className="helper">이름 (숫자)는 학번, 이름 (숫자기)는 기수로 검증합니다. 예: 김민수 (20251234), 이서연 (17기)</p>
       {roster.eligible && (
         <RosterPicker
           members={roster.members}
@@ -50,17 +60,28 @@ export default function ParticipantSection({ participants, profiles, onProfiles,
       <div className="list-toolbar"><strong>참가자 {participants.length}명</strong>{participants.length > 0 && <button className="text-button danger" onClick={onClear}>전체 삭제</button>}</div>
       <div className="participant-list">
         {participants.length === 0 && <span className="empty-inline">아직 참가자가 없습니다.</span>}
-        {participants.map((name) => (
-          <div className="participant-row" key={name}>
-            <button className="participant-name" onClick={() => setExpanded(expanded === name ? '' : name)}><span className="avatar">{name.slice(0, 1)}</span><strong>{name}</strong><small>{expanded === name ? '접기' : '속성 편집'}</small></button>
-            <button className="text-button danger" onClick={() => onRemove(name)}>삭제</button>
-            {expanded === name && <div className="profile-fields">
-              <input placeholder="학년 (예: 3학년)" value={profiles[name]?.grade ?? ''} onChange={(e) => update(name, 'grade', e.target.value)} />
-              <input placeholder="전공 (예: 컴퓨터공학)" value={profiles[name]?.major ?? ''} onChange={(e) => update(name, 'major', e.target.value)} />
-              <input placeholder="수준 (예: 중급)" value={profiles[name]?.level ?? ''} onChange={(e) => update(name, 'level', e.target.value)} />
-            </div>}
-          </div>
-        ))}
+        {participants.map((name) => {
+          const parsed = parseParticipantLabel(name)
+          return (
+            <div className="participant-row" key={name}>
+              <button className="participant-name" onClick={() => setExpanded(expanded === name ? '' : name)}>
+                <span className="participant-title">
+                  <strong>{parsed.name || name}</strong>
+                  {parsed.identifierType !== 'none' && parsed.identifierType !== 'invalid' && (
+                    <span className="participant-id-badge">{formatParticipantIdentifier(parsed)}</span>
+                  )}
+                </span>
+                <small>{expanded === name ? '접기' : '속성 편집'}</small>
+              </button>
+              <button className="text-button danger" onClick={() => onRemove(name)}>삭제</button>
+              {expanded === name && <div className="profile-fields">
+                <input placeholder="학년 (예: 3학년)" value={profiles[name]?.grade ?? ''} onChange={(e) => update(name, 'grade', e.target.value)} />
+                <input placeholder="전공 (예: 컴퓨터공학)" value={profiles[name]?.major ?? ''} onChange={(e) => update(name, 'major', e.target.value)} />
+                <input placeholder="수준 (예: 중급)" value={profiles[name]?.level ?? ''} onChange={(e) => update(name, 'level', e.target.value)} />
+              </div>}
+            </div>
+          )
+        })}
       </div>
     </Section>
   )

@@ -1,17 +1,27 @@
 import { useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp, Download, RefreshCw, Search, UserPlus } from 'lucide-react'
-import { dedupeAgainst, filterRoster, getRosterGenerationOptions, rosterToCsv, summarizeRoster } from '../utils/roster'
+import { dedupeAgainst, filterRoster, filterRosterByStatus, formatRosterIdentifier, getRosterGenerationOptions, rosterToCsv, summarizeRoster } from '../utils/roster'
 
 export default function RosterPicker({ members, loading, error, loaded, onRefresh, participants, onAddMembers }) {
   const [query, setQuery] = useState('')
   const [generation, setGeneration] = useState('')
-  const [showAll, setShowAll] = useState(false)
+  const [statusFilter, setStatusFilter] = useState('available')
+  const [showAll, setShowAll] = useState(true)
   const [checked, setChecked] = useState(() => new Set())
 
-  const available = useMemo(() => dedupeAgainst(members, participants), [members, participants])
-  const filtered = useMemo(() => filterRoster(available, { query, generation }), [available, generation, query])
-  const generations = useMemo(() => getRosterGenerationOptions(available), [available])
   const summary = useMemo(() => summarizeRoster(members, participants), [members, participants])
+  const statusFiltered = useMemo(() => filterRosterByStatus(members, participants, statusFilter), [members, participants, statusFilter])
+  const filtered = useMemo(() => filterRoster(statusFiltered, { query, generation }), [generation, query, statusFiltered])
+  const addableFiltered = useMemo(() => dedupeAgainst(filtered, participants), [filtered, participants])
+  const generations = useMemo(() => getRosterGenerationOptions(statusFiltered), [statusFiltered])
+  const summaryItems = [
+    { id: 'all', label: '명단', value: summary.total, unit: '명' },
+    { id: 'available', label: '미추가', value: summary.available, unit: '명' },
+    { id: 'added', label: '추가됨', value: summary.added, unit: '명' },
+    { id: 'student-id', label: '학번 있음', value: summary.withStudentId, unit: '명' },
+    { id: 'generation-only', label: '기수 식별', value: summary.generationOnly, unit: '명' },
+    { id: 'duplicate-name', label: '동명이인', value: summary.duplicateNames, unit: '건' },
+  ]
 
   const toggle = (id) => {
     setChecked((current) => {
@@ -23,6 +33,7 @@ export default function RosterPicker({ members, loading, error, loaded, onRefres
   }
 
   const addOne = (member) => {
+    if (!dedupeAgainst([member], participants).length) return
     onAddMembers([member])
     setChecked((current) => {
       const next = new Set(current)
@@ -33,15 +44,15 @@ export default function RosterPicker({ members, loading, error, loaded, onRefres
   }
 
   const addChecked = () => {
-    const selected = filtered.filter((member) => checked.has(member.id))
+    const selected = dedupeAgainst(filtered.filter((member) => checked.has(member.id)), participants)
     if (!selected.length) return
     onAddMembers(selected)
     setChecked(new Set())
   }
 
   const addFiltered = () => {
-    if (!filtered.length) return
-    onAddMembers(filtered)
+    if (!addableFiltered.length) return
+    onAddMembers(addableFiltered)
     setChecked(new Set())
   }
 
@@ -77,13 +88,22 @@ export default function RosterPicker({ members, loading, error, loaded, onRefres
         <div className="notice info small">등록된 동아리 회원이 없습니다.</div>
       )}
       <div className="roster-admin-summary" aria-label="관리자 명단 요약">
-        <span><strong>명단 {summary.total}명</strong></span>
-        <span>미추가 {summary.available}명</span>
-        <span>추가됨 {summary.added}명</span>
-        <span>학번 누락 {summary.missingStudentId}명</span>
-        <span>동명이인 {summary.duplicateNames}건</span>
+        {summaryItems.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={statusFilter === item.id ? 'is-active' : ''}
+            aria-pressed={statusFilter === item.id}
+            onClick={() => {
+              setStatusFilter(item.id)
+              setChecked(new Set())
+            }}
+          >
+            {item.label} {item.value}{item.unit}
+          </button>
+        ))}
       </div>
-      <p className="roster-identity-note">동명이인은 학번·기수 라벨로 구분해 추가합니다. 졸업생은 기수나 입학년도 끝 두 자리로 검색할 수 있습니다.</p>
+      <p className="roster-identity-note">학번은 학번으로, 기수는 17기처럼 구분해 표시합니다. 졸업생은 기수나 입학년도 끝 두 자리로 검색할 수 있습니다.</p>
       {summary.generations.length > 0 && (
         <div className="roster-generation-strip" aria-label="기수별 명단 수">
           {summary.generations.slice(0, 6).map((item) => (
@@ -106,17 +126,17 @@ export default function RosterPicker({ members, loading, error, loaded, onRefres
         </div>
         <select value={generation} onChange={(event) => setGeneration(event.target.value)} aria-label="기수 선택">
           <option value="">기수 선택</option>
-          {generations.map((item) => <option value={item} key={item}>{item}</option>)}
+          {generations.map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}
         </select>
       </div>
       <div className="roster-admin-actions">
-        <button type="button" className="button primary small" onClick={addFiltered} disabled={filtered.length === 0}>
+        <button type="button" className="button primary small" onClick={addFiltered} disabled={addableFiltered.length === 0}>
           <UserPlus size={14} aria-hidden="true" />현재 필터 추가
         </button>
         <button type="button" className="button ghost small" onClick={downloadCsv} disabled={filtered.length === 0}>
           <Download size={14} aria-hidden="true" />CSV
         </button>
-        <span className="muted">대상 {filtered.length}명</span>
+        <span className="muted">대상 {filtered.length}명 · 추가 가능 {addableFiltered.length}명</span>
       </div>
       {query.trim() && filtered.length > 0 && (
         <ul className="roster-suggestions" role="listbox" id="roster-suggestion-list">
@@ -124,7 +144,7 @@ export default function RosterPicker({ members, loading, error, loaded, onRefres
             <li key={member.id} role="option" aria-selected={false}>
               <button type="button" className="roster-suggestion" onClick={() => addOne(member)}>
                 <span className="roster-name">{member.name}</span>
-                <span className="roster-meta">{member.studentId || member.generation || '학번 미상'}</span>
+                <span className="roster-meta">{formatRosterIdentifier(member)}</span>
                 <UserPlus size={14} aria-hidden="true" />
               </button>
             </li>
@@ -138,7 +158,7 @@ export default function RosterPicker({ members, loading, error, loaded, onRefres
         aria-expanded={showAll}
       >
         {showAll ? <ChevronUp size={14} aria-hidden="true" /> : <ChevronDown size={14} aria-hidden="true" />}
-        전체 명단 {showAll ? '접기' : `펼치기 (${available.length}명)`}
+        전체 명단 {showAll ? '접기' : `펼치기 (${filtered.length}명)`}
       </button>
       {showAll && (
         <div className="roster-list">
@@ -167,7 +187,7 @@ export default function RosterPicker({ members, loading, error, loaded, onRefres
                     onChange={() => toggle(member.id)}
                   />
                   <span className="roster-name">{member.name}</span>
-                  <span className="roster-meta">{member.studentId || member.generation || '학번 미상'}</span>
+                  <span className="roster-meta">{formatRosterIdentifier(member)}</span>
                 </label>
               </li>
             ))}

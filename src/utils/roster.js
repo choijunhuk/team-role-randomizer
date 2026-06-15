@@ -13,6 +13,32 @@ function normalizeMember(raw) {
   return { id, studentId, name, generation, admissionYear }
 }
 
+function hasStudentId(member) {
+  return Boolean(String(member?.studentId ?? '').trim())
+}
+
+function normalizeGenerationValue(value) {
+  const text = String(value ?? '').trim()
+  if (!text) return ''
+  const numeric = text.match(/^(\d+)\s*기?$/)
+  return numeric ? numeric[1] : text.replace(/\s+/g, ' ')
+}
+
+export function formatGeneration(value) {
+  const normalized = normalizeGenerationValue(value)
+  if (!normalized) return ''
+  return /^\d+$/.test(normalized) ? `${normalized}기` : normalized
+}
+
+function duplicateNameSet(members) {
+  const counts = new Map()
+  members.forEach((member) => {
+    const name = String(member.name ?? '').trim()
+    if (name) counts.set(name, (counts.get(name) ?? 0) + 1)
+  })
+  return new Set([...counts.entries()].filter(([, count]) => count > 1).map(([name]) => name))
+}
+
 export async function fetchRoster(fetcher = fetch) {
   let response
   try {
@@ -40,28 +66,38 @@ export function searchRoster(members, query) {
     member.name.toLowerCase().includes(term)
     || member.studentId.toLowerCase().includes(term)
     || member.generation.toLowerCase().includes(term)
+    || formatGeneration(member.generation).toLowerCase().includes(term)
     || String(member.admissionYear ?? '').includes(term)
     || String(member.admissionYear ?? '').slice(-2).includes(term)
   ))
 }
 
 export function getRosterGenerationOptions(members) {
-  return [...new Set(members.map((member) => String(member.generation ?? '').trim()).filter(Boolean))]
+  return [...new Set(members.map((member) => normalizeGenerationValue(member.generation)).filter(Boolean))]
     .sort((a, b) => a.localeCompare(b, 'ko-KR', { numeric: true }))
+    .map((value) => ({ value, label: formatGeneration(value) }))
 }
 
 export function filterRoster(members, { query = '', generation = '' } = {}) {
-  const generationFilter = String(generation ?? '').trim()
+  const generationFilter = normalizeGenerationValue(generation)
   const byGeneration = generationFilter
-    ? members.filter((member) => String(member.generation ?? '').trim() === generationFilter)
+    ? members.filter((member) => normalizeGenerationValue(member.generation) === generationFilter)
     : members
   return searchRoster(byGeneration, query)
+}
+
+export function formatRosterIdentifier(member) {
+  const studentId = String(member?.studentId ?? '').trim()
+  const generation = formatGeneration(member?.generation)
+  if (studentId) return `학번 ${studentId}`
+  if (generation) return `기수 ${generation}`
+  return '식별자 없음'
 }
 
 export function formatRosterParticipant(member) {
   const name = String(member?.name ?? '').trim()
   const studentId = String(member?.studentId ?? '').trim()
-  const generation = String(member?.generation ?? '').trim()
+  const generation = formatGeneration(member?.generation)
   if (studentId) return `${name} (${studentId})`
   if (generation) return `${name} (${generation})`
   return name
@@ -72,25 +108,40 @@ export function dedupeAgainst(members, existingNames = []) {
   return members.filter((member) => !taken.has(formatRosterParticipant(member)))
 }
 
+export function filterRosterByStatus(members, existingNames = [], status = 'available') {
+  if (status === 'all') return members
+  if (status === 'available') return dedupeAgainst(members, existingNames)
+  if (status === 'added') {
+    const available = new Set(dedupeAgainst(members, existingNames).map((member) => member.id))
+    return members.filter((member) => !available.has(member.id))
+  }
+  if (status === 'student-id') return members.filter(hasStudentId)
+  if (status === 'generation-only') return members.filter((member) => !hasStudentId(member))
+  if (status === 'duplicate-name') {
+    const duplicateNames = duplicateNameSet(members)
+    return members.filter((member) => duplicateNames.has(String(member.name ?? '').trim()))
+  }
+  return dedupeAgainst(members, existingNames)
+}
+
 export function summarizeRoster(members, existingNames = []) {
   const added = members.length - dedupeAgainst(members, existingNames).length
   const counts = new Map()
-  const nameCounts = new Map()
   members.forEach((member) => {
-    const generation = String(member.generation ?? '').trim() || '기수 미상'
+    const generation = formatGeneration(member.generation) || '기수 미상'
     counts.set(generation, (counts.get(generation) ?? 0) + 1)
-    const name = String(member.name ?? '').trim()
-    if (name) nameCounts.set(name, (nameCounts.get(name) ?? 0) + 1)
   })
   const generations = [...counts.entries()]
     .map(([label, count]) => ({ label, count }))
     .sort((a, b) => a.label.localeCompare(b.label, 'ko-KR', { numeric: true }))
+  const duplicateNames = duplicateNameSet(members).size
   return {
     total: members.length,
     added,
     available: members.length - added,
-    missingStudentId: members.filter((member) => !String(member.studentId ?? '').trim()).length,
-    duplicateNames: [...nameCounts.values()].filter((count) => count > 1).length,
+    withStudentId: members.filter(hasStudentId).length,
+    generationOnly: members.filter((member) => !hasStudentId(member)).length,
+    duplicateNames,
     generations,
   }
 }

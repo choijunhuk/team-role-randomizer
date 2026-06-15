@@ -12,6 +12,7 @@ import NotificationBell from './components/NotificationBell'
 import BrandLogo from './components/BrandLogo'
 import { DEFAULT_ROLES, EMPTY_FAIRNESS, useWorkspaceData } from './hooks/useWorkspaceData'
 import { useInviteState } from './hooks/useInviteState'
+import { parseParticipantInput } from './utils/participants'
 import { assignRoles, createTeams, decodeShareData, encodeShareData, resultToText, validateTeamConstraints } from './utils/teamUtils'
 
 const clone = (value) => structuredClone(value)
@@ -49,11 +50,14 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
   const changeTeams = (nextTeams, notice) => { saveSnapshot(); setTeams(nextTeams); if (notice) notify(notice) }
 
   const addParticipants = (raw) => {
-    const names = raw.split(/[\n,\t]+/).map((name) => name.trim()).filter(Boolean)
-    const next = [...new Set(names)].filter((name) => !participants.includes(name))
-    if (!next.length) { setMessage({ type: 'error', text: names.length ? '이미 등록된 이름입니다.' : '추가할 이름을 입력해주세요.' }); return false }
+    const result = parseParticipantInput(raw)
+    if (result.errors.length) { setMessage({ type: 'error', text: result.errors[0] }); return false }
+    const next = [...new Set(result.names)].filter((name) => !participants.includes(name))
+    if (!next.length) { setMessage({ type: 'error', text: result.names.length ? '이미 등록된 참가자입니다.' : '추가할 이름을 입력해주세요.' }); return false }
     setParticipants([...participants, ...next])
-    setMessage({ type: next.length < names.length ? 'warning' : 'success', text: `${next.length}명을 추가했습니다${next.length < names.length ? '. 중복 이름은 제외했습니다.' : '.'}` })
+    const duplicateNotice = next.length < result.names.length ? ' 중복 참가자는 제외했습니다.' : ''
+    const nameOnlyNotice = result.nameOnlyCount ? ` 식별자 없는 ${result.nameOnlyCount}명은 이름만 표시됩니다.` : ''
+    setMessage({ type: duplicateNotice || nameOnlyNotice ? 'warning' : 'success', text: `${next.length}명을 추가했습니다.${duplicateNotice}${nameOnlyNotice}` })
     return true
   }
   const addRole = (role) => {

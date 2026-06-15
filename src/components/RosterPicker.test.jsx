@@ -17,16 +17,18 @@ describe('RosterPicker', () => {
         error=""
         loaded
         onRefresh={() => {}}
-        participants={['이서연']}
+        participants={['이서연 (20240001)']}
         onAddMembers={() => {}}
       />,
     )
 
     expect(markup).toContain('명단 4명')
-    expect(markup).toContain('미추가 4명')
-    expect(markup).toContain('학번 누락 1명')
+    expect(markup).toContain('미추가 3명')
+    expect(markup).toContain('학번 있음 3명')
+    expect(markup).toContain('기수 식별 1명')
     expect(markup).toContain('동명이인 1건')
-    expect(markup).toContain('학번·기수 라벨로 구분해 추가합니다')
+    expect(markup).toContain('학번은 학번으로, 기수는 17기처럼 구분해 표시합니다')
+    expect(markup).toContain('학번 20251234')
     expect(markup).toContain('기수 선택')
     expect(markup).toContain('현재 필터 추가')
     expect(markup).toContain('CSV')

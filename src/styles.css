@@ -77,9 +77,12 @@ textarea { resize: vertical; min-height: 96px; width: 100%; }
 .list-toolbar { display: flex; justify-content: space-between; margin: 20px 0 12px; font-size: 13px; }
 .tags, .mini-tags { display: flex; gap: 8px; flex-wrap: wrap; }
 .participant-list { display: grid; gap: 8px; }
-.participant-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; padding: 8px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel-soft); }
-.participant-name { display: flex; align-items: center; gap: 9px; border: 0; background: transparent; color: var(--text); text-align: left; }
+.participant-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-soft); }
+.participant-name { min-width: 0; display: flex; align-items: center; gap: 12px; border: 0; background: transparent; color: var(--text); text-align: left; }
 .participant-name small { color: var(--muted); margin-left: auto; }
+.participant-title { min-width: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.participant-title strong { font-size: 14px; }
+.participant-id-badge { padding: 4px 7px; border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--line)); border-radius: 999px; background: color-mix(in srgb, var(--primary) 8%, var(--panel)); color: var(--primary); font-size: 11px; font-weight: 800; }
 .profile-fields { grid-column: span 2; display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
 .profile-fields input { min-width: 0; font-size: 11px; padding: 8px; }
 .tag { display: inline-flex; align-items: center; gap: 7px; padding: 8px 10px 8px 12px; border-radius: 100px; background: var(--panel-soft); border: 1px solid var(--line); font-size: 13px; font-weight: 600; }
@@ -258,9 +261,9 @@ footer { color: var(--muted); text-align: center; padding: 28px; font-size: 11px
 .roster-picker { margin-top: 14px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel-soft); display: flex; flex-direction: column; gap: 10px; }
 .roster-picker-head { display: flex; align-items: center; justify-content: space-between; }
 .roster-picker-head strong { font-size: 13px; }
-.roster-admin-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-.roster-admin-summary span { min-width: 0; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--muted); font-size: 11px; font-weight: 700; }
-.roster-admin-summary strong { color: var(--text); }
+.roster-admin-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.roster-admin-summary button { min-width: 0; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--muted); font-size: 11px; font-weight: 800; text-align: left; }
+.roster-admin-summary button.is-active { border-color: color-mix(in srgb, var(--primary) 42%, var(--line)); background: color-mix(in srgb, var(--primary) 10%, var(--panel)); color: var(--primary); }
 .roster-identity-note { margin: -2px 0 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
 .roster-generation-strip { display: flex; gap: 6px; flex-wrap: wrap; }
 .roster-generation-strip span { padding: 5px 8px; border-radius: 999px; background: color-mix(in srgb, var(--primary) 9%, var(--panel)); color: var(--primary); font-size: 10px; font-weight: 800; }
