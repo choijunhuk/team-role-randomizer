@@ -1,5 +1,17 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { clearAllData, getUserWorkspace, hasLegacyData, importLegacyData, loadData, saveData } from './storage'
+import {
+  createRoomRecord,
+  deleteRoom,
+  getRoomWorkspace,
+  getUserWorkspace,
+  hasLegacyData,
+  importLegacyData,
+  loadData,
+  loadRooms,
+  saveData,
+  clearAllData,
+  saveRooms,
+} from './storage'
 
 function installLocalStorage() {
   const store = new Map()
@@ -69,5 +81,46 @@ describe('workspace storage', () => {
     importLegacyData(workspace)
     expect(loadData('participants', [], workspace)).toEqual(['공용 데이터'])
     expect(hasLegacyData()).toBe(false)
+  })
+
+  it('creates room workspaces under the same COMS account without mixing participants', () => {
+    const account = getUserWorkspace({ studentId: '2026123456', name: '김컴스' })
+    const firstRoom = { id: 'default', name: '기본 방' }
+    const secondRoom = { id: 'room-study', name: '스터디 방' }
+    const firstWorkspace = getRoomWorkspace(account, firstRoom)
+    const secondWorkspace = getRoomWorkspace(account, secondRoom)
+
+    saveData('participants', ['1번 방'], firstWorkspace)
+    saveData('participants', ['2번 방'], secondWorkspace)
+
+    expect(loadData('participants', [], firstWorkspace)).toEqual(['1번 방'])
+    expect(loadData('participants', [], secondWorkspace)).toEqual(['2번 방'])
+    expect(firstWorkspace.label).toBe('김컴스 · 기본 방')
+    expect(secondWorkspace.label).toBe('김컴스 · 스터디 방')
+  })
+
+  it('stores the room list at account scope and keeps a default room', () => {
+    const account = getUserWorkspace({ studentId: '2026123456', name: '김컴스' })
+    const studyRoom = createRoomRecord('  스터디 방  ', 1000, () => 0.1234)
+
+    saveRooms(account, [studyRoom])
+
+    expect(studyRoom).toMatchObject({ id: 'room-rs-4fxc', name: '스터디 방' })
+    expect(loadRooms(account)).toEqual([{ id: 'default', name: '기본 방', createdAt: 0 }, studyRoom])
+  })
+
+  it('deletes only the selected non-default room data', () => {
+    const account = getUserWorkspace({ studentId: '2026123456', name: '김컴스' })
+    const defaultRoom = { id: 'default', name: '기본 방', createdAt: 0 }
+    const studyRoom = { id: 'room-study', name: '스터디 방' }
+    saveRooms(account, [defaultRoom, studyRoom])
+    saveData('participants', ['기본'], getRoomWorkspace(account, defaultRoom))
+    saveData('participants', ['스터디'], getRoomWorkspace(account, studyRoom))
+
+    deleteRoom(account, 'room-study')
+
+    expect(loadRooms(account)).toEqual([defaultRoom])
+    expect(loadData('participants', [], getRoomWorkspace(account, defaultRoom))).toEqual(['기본'])
+    expect(loadData('participants', [], getRoomWorkspace(account, studyRoom))).toEqual([])
   })
 })

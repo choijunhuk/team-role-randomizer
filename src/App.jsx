@@ -10,6 +10,7 @@ import InviteSection from './components/InviteSection'
 import InviteInboxSection from './components/InviteInboxSection'
 import NotificationBell from './components/NotificationBell'
 import BrandLogo from './components/BrandLogo'
+import RoomSwitcher from './components/RoomSwitcher'
 import { DEFAULT_ROLES, EMPTY_FAIRNESS, useWorkspaceData } from './hooks/useWorkspaceData'
 import { useInviteState } from './hooks/useInviteState'
 import { parseParticipantInput } from './utils/participants'
@@ -19,7 +20,7 @@ const clone = (value) => structuredClone(value)
 
 export default function App({ currentUser, logoutError, logoutPending, onLogout }) {
   const workspaceData = useWorkspaceData(currentUser)
-  const { workspace, participants, setParticipants, profiles, setProfiles, roles, setRoles, roleRules, setRoleRules, histories, setHistories, fairness, setFairness, theme, setTheme, legacyDataAvailable, importLegacyWorkspace, resetWorkspace } = workspaceData
+  const { rooms, activeRoomId, workspace, participants, setParticipants, profiles, setProfiles, roles, setRoles, roleRules, setRoleRules, histories, setHistories, fairness, setFairness, theme, setTheme, legacyDataAvailable, importLegacyWorkspace, resetWorkspace, createRoom, setActiveRoomId, removeRoom } = workspaceData
   const [mode, setMode] = useState('count')
   const [settingValue, setSettingValue] = useState('2')
   const [teams, setTeams] = useState([])
@@ -45,6 +46,12 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
       if (Array.isArray(data.teams)) setTeams(data.teams)
     } catch { /* Ignore malformed shared links. */ }
   }, [])
+
+  useEffect(() => {
+    setTeams([])
+    setEvaluation(null)
+    setUndoStack([])
+  }, [workspace.prefix])
 
   const saveSnapshot = () => setUndoStack((stack) => [...stack.slice(-14), clone(teams)])
   const changeTeams = (nextTeams, notice) => { saveSnapshot(); setTeams(nextTeams); if (notice) notify(notice) }
@@ -106,12 +113,39 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
     } catch { notify('올바른 팀메이트 백업 파일이 아닙니다.') }
   }
   const resetAll = () => {
-    if (!window.confirm('모든 데이터를 초기화할까요?')) return
-    resetWorkspace(); resetInvites(); setTeams([]); setUndoStack([]); notify('현재 계정 작업공간을 초기화했습니다.')
+    if (!window.confirm('현재 방의 모든 데이터를 초기화할까요?')) return
+    resetWorkspace(); resetInvites(); setTeams([]); setUndoStack([]); notify('현재 방을 초기화했습니다.')
+  }
+  const createWorkspaceRoom = (name) => {
+    const room = createRoom(name)
+    notify(`${room.name} 방을 만들었습니다.`)
+    return true
+  }
+  const selectWorkspaceRoom = (roomId) => {
+    setActiveRoomId(roomId)
+    const room = rooms.find((item) => item.id === roomId)
+    if (room) notify(`${room.name} 방으로 이동했습니다.`)
+  }
+  const deleteWorkspaceRoom = (roomId) => {
+    const room = rooms.find((item) => item.id === roomId)
+    if (!room || room.id === 'default') return
+    if (!window.confirm(`${room.name} 방을 삭제할까요? 이 방의 참가자와 기록이 삭제됩니다.`)) return
+    removeRoom(roomId)
+    setTeams([])
+    setUndoStack([])
+    notify(`${room.name} 방을 삭제했습니다.`)
   }
 
   return <div className="app-shell">
-    <nav className="topbar"><BrandLogo href="#" /><div><span className="user-chip">{workspace.label} · 개인 작업공간</span><NotificationBell onInvite={addNotificationInvite} /><button className="icon-button" aria-label={theme === 'light' ? '다크 모드로 변경' : '라이트 모드로 변경'} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Moon size={16} aria-hidden="true" /> : <Sun size={16} aria-hidden="true" />}</button><button className="button ghost small" onClick={resetAll}>작업공간 초기화</button><button className="button ghost small" disabled={logoutPending} onClick={onLogout}>{logoutPending ? '로그아웃 중...' : '로그아웃'}</button></div></nav>
+    <nav className="topbar"><BrandLogo href="#" /><div><span className="user-chip">{workspace.label} · 개인 작업공간</span><NotificationBell onInvite={addNotificationInvite} /><button className="icon-button" aria-label={theme === 'light' ? '다크 모드로 변경' : '라이트 모드로 변경'} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Moon size={16} aria-hidden="true" /> : <Sun size={16} aria-hidden="true" />}</button><button className="button ghost small" onClick={resetAll}>현재 방 초기화</button><button className="button ghost small" disabled={logoutPending} onClick={onLogout}>{logoutPending ? '로그아웃 중...' : '로그아웃'}</button></div></nav>
+    <RoomSwitcher
+      rooms={rooms}
+      activeRoomId={activeRoomId}
+      participantCount={participants.length}
+      onSelectRoom={selectWorkspaceRoom}
+      onCreateRoom={createWorkspaceRoom}
+      onDeleteRoom={deleteWorkspaceRoom}
+    />
     {logoutError && <div className="global-notice notice error" role="alert">{logoutError}</div>}
     {legacyDataAvailable && <div className="global-notice notice warning"><span>이 브라우저에 로그인 전 공용 데이터가 있습니다.</span><button className="button ghost small" onClick={importLegacyWorkspace}>현재 계정으로 가져오기</button></div>}
     <header className="hero"><div><span className="hero-chip">TEAM MAKER · FAIR RANDOM</span><h1>팀 나누기부터 역할 배정까지,<br /><em>한 번에 공정하게.</em></h1><p>이전 조합과 참가자 속성까지 고려하는 팀플·스터디용 랜덤 팀 메이커입니다.</p></div><div className="hero-stats"><div><strong>{participants.length}</strong><span>참가자</span></div><div><strong>{teams.length}</strong><span>배정 팀</span></div><div><strong>{roles.length}</strong><span>역할</span></div></div></header>
@@ -124,7 +158,7 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
       <ResultSection teams={teams} roles={roles} evaluation={evaluation} canUndo={undoStack.length > 0} onUndo={() => { const previous = undoStack.at(-1); setUndoStack(undoStack.slice(0, -1)); setTeams(previous) }} onChange={changeTeams} onReroll={assignTeams} onAssignAll={() => changeTeams(teams.map((team) => assignRoles(team, roles, roleRules)), '모든 역할을 배정했습니다.')} onAssignTeam={(id) => changeTeams(teams.map((team) => team.id === id ? assignRoles(team, roles, roleRules) : team), '역할을 배정했습니다.')} onCopy={() => copyText(resultToText(teams), '결과를 복사했습니다.')} onShare={() => copyText(shareUrl(), '공유 링크를 복사했습니다.')} onQr={async () => setQr(await QRCode.toDataURL(shareUrl(), { width: 320, margin: 2 }))} onDownload={() => download(resultToText(teams), `팀-배정-${new Date().toISOString().slice(0, 10)}.txt`)} />
       <HistorySection histories={histories} onLoad={(history) => { changeTeams(clone(history.teams)); notify('기록을 불러왔습니다.') }} onDelete={(id) => setHistories(histories.filter((item) => item.id !== id))} onToggleFavorite={(id) => setHistories(histories.map((item) => item.id === id ? { ...item, favorite: !item.favorite } : item))} onClear={() => window.confirm('기록을 모두 삭제할까요?') && setHistories([])} onExport={exportJson} onImport={importJson} />
     </main>
-    <footer>팀메이트 · 데이터는 이 브라우저의 {workspace.label} 작업공간에 저장되며 서버에 동기화되지 않습니다. · Made by 최준혁</footer>
+    <footer>팀메이트 · 데이터는 이 브라우저의 {workspace.label}에 저장되며 서버에 동기화되지 않습니다. · Made by 최준혁</footer>
     {toast && <div className="toast">{toast}</div>}
     {qr && <div className="modal" onClick={() => setQr('')}><div onClick={(e) => e.stopPropagation()}><button className="modal-close" aria-label="QR 모달 닫기" onClick={() => setQr('')}><X size={16} aria-hidden="true" /></button><h3>결과 공유 QR</h3><img src={qr} alt="공유 링크 QR 코드" /><p>스캔하면 현재 배정 결과를 확인할 수 있습니다.</p></div></div>}
   </div>

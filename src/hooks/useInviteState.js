@@ -3,12 +3,21 @@ import { clearInviteHash, fetchInviteInbox, inviteToken, markInviteRead, matches
 import { loadData, saveData } from '../utils/storage'
 
 export function useInviteState({ currentUser, workspace, setParticipants, notify }) {
+  const [loadedWorkspacePrefix, setLoadedWorkspacePrefix] = useState(workspace.prefix)
   const [inbox, setInbox] = useState(() => loadData('inbox', [], workspace))
   const [sentInvites, setSentInvites] = useState(() => loadData('sentInvites', [], workspace))
   const currentStudentId = currentUser?.studentId
 
-  useEffect(() => saveData('inbox', inbox, workspace), [inbox, workspace])
-  useEffect(() => saveData('sentInvites', sentInvites, workspace), [sentInvites, workspace])
+  useEffect(() => {
+    setInbox(loadData('inbox', [], workspace))
+    setSentInvites(loadData('sentInvites', [], workspace))
+    setLoadedWorkspacePrefix(workspace.prefix)
+  }, [workspace])
+
+  const workspaceLoaded = loadedWorkspacePrefix === workspace.prefix
+
+  useEffect(() => { if (workspaceLoaded) saveData('inbox', inbox, workspace) }, [inbox, workspace, workspaceLoaded])
+  useEffect(() => { if (workspaceLoaded) saveData('sentInvites', sentInvites, workspace) }, [sentInvites, workspace, workspaceLoaded])
 
   useEffect(() => {
     const invite = readInviteFromLocation()
