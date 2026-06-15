@@ -261,6 +261,7 @@ footer { color: var(--muted); text-align: center; padding: 28px; font-size: 11px
 .roster-admin-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .roster-admin-summary span { min-width: 0; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--muted); font-size: 11px; font-weight: 700; }
 .roster-admin-summary strong { color: var(--text); }
+.roster-identity-note { margin: -2px 0 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
 .roster-generation-strip { display: flex; gap: 6px; flex-wrap: wrap; }
 .roster-generation-strip span { padding: 5px 8px; border-radius: 999px; background: color-mix(in srgb, var(--primary) 9%, var(--panel)); color: var(--primary); font-size: 10px; font-weight: 800; }
 .roster-filter-row { display: grid; grid-template-columns: 1fr 130px; gap: 8px; align-items: stretch; }

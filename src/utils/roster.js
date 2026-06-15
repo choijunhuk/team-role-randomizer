@@ -40,6 +40,8 @@ export function searchRoster(members, query) {
     member.name.toLowerCase().includes(term)
     || member.studentId.toLowerCase().includes(term)
     || member.generation.toLowerCase().includes(term)
+    || String(member.admissionYear ?? '').includes(term)
+    || String(member.admissionYear ?? '').slice(-2).includes(term)
   ))
 }
 
@@ -56,17 +58,29 @@ export function filterRoster(members, { query = '', generation = '' } = {}) {
   return searchRoster(byGeneration, query)
 }
 
+export function formatRosterParticipant(member) {
+  const name = String(member?.name ?? '').trim()
+  const studentId = String(member?.studentId ?? '').trim()
+  const generation = String(member?.generation ?? '').trim()
+  if (studentId) return `${name} (${studentId})`
+  if (generation) return `${name} (${generation})`
+  return name
+}
+
 export function dedupeAgainst(members, existingNames = []) {
   const taken = new Set(existingNames.map((name) => String(name).trim()))
-  return members.filter((member) => !taken.has(String(member.name).trim()))
+  return members.filter((member) => !taken.has(formatRosterParticipant(member)))
 }
 
 export function summarizeRoster(members, existingNames = []) {
   const added = members.length - dedupeAgainst(members, existingNames).length
   const counts = new Map()
+  const nameCounts = new Map()
   members.forEach((member) => {
     const generation = String(member.generation ?? '').trim() || '기수 미상'
     counts.set(generation, (counts.get(generation) ?? 0) + 1)
+    const name = String(member.name ?? '').trim()
+    if (name) nameCounts.set(name, (nameCounts.get(name) ?? 0) + 1)
   })
   const generations = [...counts.entries()]
     .map(([label, count]) => ({ label, count }))
@@ -76,6 +90,7 @@ export function summarizeRoster(members, existingNames = []) {
     added,
     available: members.length - added,
     missingStudentId: members.filter((member) => !String(member.studentId ?? '').trim()).length,
+    duplicateNames: [...nameCounts.values()].filter((count) => count > 1).length,
     generations,
   }
 }
@@ -87,12 +102,13 @@ const csvCell = (value) => {
 
 export function rosterToCsv(members) {
   const rows = members.map((member) => [
+    formatRosterParticipant(member),
     member.name,
     member.studentId,
     member.generation,
     member.admissionYear ?? '',
   ].map(csvCell).join(','))
-  return ['name,studentId,generation,admissionYear', ...rows].join('\n')
+  return ['participantLabel,name,studentId,generation,admissionYear', ...rows].join('\n')
 }
 
 export function isAdminUser(user) {

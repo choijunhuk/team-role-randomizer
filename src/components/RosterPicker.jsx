@@ -81,7 +81,9 @@ export default function RosterPicker({ members, loading, error, loaded, onRefres
         <span>미추가 {summary.available}명</span>
         <span>추가됨 {summary.added}명</span>
         <span>학번 누락 {summary.missingStudentId}명</span>
+        <span>동명이인 {summary.duplicateNames}건</span>
       </div>
+      <p className="roster-identity-note">동명이인은 학번·기수 라벨로 구분해 추가합니다. 졸업생은 기수나 입학년도 끝 두 자리로 검색할 수 있습니다.</p>
       {summary.generations.length > 0 && (
         <div className="roster-generation-strip" aria-label="기수별 명단 수">
           {summary.generations.slice(0, 6).map((item) => (
