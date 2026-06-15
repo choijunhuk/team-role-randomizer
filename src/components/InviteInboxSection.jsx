@@ -56,7 +56,7 @@ export default function InviteInboxSection({ invites, onRefresh, onJoin, onDismi
               {invite.inviteUrl && /^https?:\/\//i.test(invite.inviteUrl) && (
                 <a className="button ghost small" href={invite.inviteUrl} target="_blank" rel="noopener noreferrer">초대 링크 열기</a>
               )}
-              <button className="text-button" onClick={() => onDismiss(invite)}>숨기기</button>
+              <button className="text-button danger" onClick={() => onDismiss(invite)} aria-label="받은 초대 삭제">삭제</button>
             </footer>
           </article>
         ))}

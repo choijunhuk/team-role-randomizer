@@ -18,7 +18,7 @@ const formatTime = (value) => {
   }
 }
 
-export default function InviteSection({ currentUser, onNotify, sentInvites = [], onRecordSentInvite }) {
+export default function InviteSection({ currentUser, onNotify, sentInvites = [], onRecordSentInvite, onDeleteSentInvite }) {
   const [raw, setRaw] = useState('')
   const [message, setMessage] = useState('')
   const [pending, setPending] = useState(false)
@@ -173,6 +173,11 @@ export default function InviteSection({ currentUser, onNotify, sentInvites = [],
               {invite.targets?.length > 0 && <small>{invite.targets.slice(0, 3).map((target) => target.label).join(', ')}{invite.targets.length > 3 ? ` 외 ${invite.targets.length - 3}명` : ''}</small>}
               {invite.status === 'sent' && <small>성공 {invite.accepted}명 · 미등록 {invite.unknown.length}명 · 거절 {invite.rejected}건</small>}
               {invite.status === 'failed' && <small>링크는 그대로 사용할 수 있습니다.</small>}
+              {onDeleteSentInvite && (
+                <button className="text-button danger sent-invite-delete" onClick={() => onDeleteSentInvite(invite)} aria-label="보낸 초대 삭제">
+                  삭제
+                </button>
+              )}
             </article>
           ))}
         </div>

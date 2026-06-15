@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { clearInviteHash, fetchInviteInbox, inviteToken, markInviteRead, matchesStudentId, mergeInvites, mergeSentInvites, readInviteFromLocation } from '../utils/invite'
+import { clearInviteHash, fetchInviteInbox, inviteToken, markInviteRead, matchesStudentId, mergeInvites, mergeSentInvites, readInviteFromLocation, removeInviteByToken } from '../utils/invite'
 import { loadData, saveData } from '../utils/storage'
 
 export function useInviteState({ currentUser, workspace, setParticipants, notify }) {
@@ -56,7 +56,8 @@ export function useInviteState({ currentUser, workspace, setParticipants, notify
     notify(`${invite.displayName || invite.host || '초대'}에 합류했습니다.`)
   }
 
-  const dismissInvite = (invite) => setInbox((prev) => prev.filter((item) => item.token !== invite.token))
+  const dismissInvite = (invite) => setInbox((prev) => removeInviteByToken(prev, invite))
+  const deleteSentInvite = (invite) => setSentInvites((prev) => removeInviteByToken(prev, invite))
 
   const addNotificationInvite = (item) => {
     const incoming = {
@@ -83,6 +84,7 @@ export function useInviteState({ currentUser, workspace, setParticipants, notify
     sentInvites,
     setSentInvites,
     recordSentInvite,
+    deleteSentInvite,
     joinInvite,
     dismissInvite,
     addNotificationInvite,

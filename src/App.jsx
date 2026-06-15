@@ -39,7 +39,7 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
     return Number.isInteger(value) && value > 0 ? mode === 'count' ? value : Math.ceil(participants.length / value) : 0
   }, [mode, settingValue, participants.length])
   const constraintReport = useMemo(() => validateTeamConstraints(participants, expectedTeams, fairness), [participants, expectedTeams, fairness])
-  const { inbox, setInbox, sentInvites, recordSentInvite, joinInvite, dismissInvite, addNotificationInvite, resetInvites } = useInviteState({ currentUser, workspace, setParticipants, notify })
+  const { inbox, setInbox, sentInvites, recordSentInvite, deleteSentInvite, joinInvite, dismissInvite, addNotificationInvite, resetInvites } = useInviteState({ currentUser, workspace, setParticipants, notify })
 
   useEffect(() => {
     const hash = new URLSearchParams(location.hash.slice(1)).get('share')
@@ -168,7 +168,7 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
       </header>
       <main className="invite-only-layout">
         <InviteInboxSection invites={inbox} currentUser={currentUser} onRefresh={(next) => setInbox(next)} onJoin={joinInvite} onDismiss={dismissInvite} />
-        <InviteSection currentUser={currentUser} onNotify={notify} sentInvites={sentInvites} onRecordSentInvite={recordSentInvite} />
+        <InviteSection currentUser={currentUser} onNotify={notify} sentInvites={sentInvites} onRecordSentInvite={recordSentInvite} onDeleteSentInvite={deleteSentInvite} />
       </main>
       <footer>팀메이트 · 일반 회원은 초대 기능만 사용할 수 있습니다. · Made by 최준혁</footer>
       {toast && <div className="toast">{toast}</div>}
@@ -216,7 +216,7 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
         <div className="setup-grid"><ParticipantSection participants={participants} profiles={profiles} onProfiles={setProfiles} onAdd={addParticipants} onRemove={(name) => setParticipants(participants.filter((item) => item !== name))} onClear={() => setParticipants([])} message={message} currentUser={currentUser} /><TeamSettings mode={mode} setMode={setMode} value={settingValue} setValue={setSettingValue} fairness={fairness} setFairness={setFairness} participants={participants} constraintReport={constraintReport} /></div>
         <div className="support-grid">
           <InviteInboxSection invites={inbox} currentUser={currentUser} onRefresh={(next) => setInbox(next)} onJoin={joinInvite} onDismiss={dismissInvite} />
-          <InviteSection currentUser={currentUser} onNotify={notify} sentInvites={sentInvites} onRecordSentInvite={recordSentInvite} />
+          <InviteSection currentUser={currentUser} onNotify={notify} sentInvites={sentInvites} onRecordSentInvite={recordSentInvite} onDeleteSentInvite={deleteSentInvite} />
         </div>
         <RoleSection roles={roles} roleRules={roleRules} participants={participants} onRules={setRoleRules} onAdd={addRole} onRemove={(role) => setRoles(roles.filter((item) => item !== role))} />
         <div className="assign-banner"><div><span>READY</span><strong>{participants.length}명을 {expectedTeams || 0}개 팀으로 배정합니다.</strong></div><button className="button primary large" onClick={assignTeams}>랜덤 팀 배정하기 <ArrowRight size={17} aria-hidden="true" /></button></div>

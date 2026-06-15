@@ -307,6 +307,12 @@ export function mergeSentInvites(existing = [], incoming = []) {
   return [...seen.values()].sort((a, b) => (b.updatedAt ?? b.createdAt ?? 0) - (a.updatedAt ?? a.createdAt ?? 0))
 }
 
+export function removeInviteByToken(invites = [], inviteOrToken) {
+  const token = typeof inviteOrToken === 'string' ? inviteOrToken : inviteOrToken?.token
+  if (!token) return invites
+  return invites.filter((invite) => invite?.token !== token)
+}
+
 function parseIssuedAt(value) {
   if (value == null) return Date.now()
   if (typeof value === 'number') return value

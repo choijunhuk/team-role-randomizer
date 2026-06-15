@@ -18,6 +18,7 @@ import {
   parseStudentIds,
   postInviteNotification,
   readInviteFromLocation,
+  removeInviteByToken,
 } from './invite'
 
 const buildResponse = (status, body, extra = {}) => ({
@@ -307,5 +308,13 @@ describe('invite utilities', () => {
       createdAt: 10,
       updatedAt: 20,
     })
+  })
+
+  it('removes invites by stable token without mutating other invites', () => {
+    const first = { token: 'sent-a', message: '삭제할 초대' }
+    const second = { token: 'sent-b', message: '남길 초대' }
+
+    expect(removeInviteByToken([first, second], first)).toEqual([second])
+    expect(removeInviteByToken([first, second], 'sent-b')).toEqual([first])
   })
 })
