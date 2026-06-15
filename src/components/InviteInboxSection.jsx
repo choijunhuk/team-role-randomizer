@@ -36,6 +36,7 @@ export default function InviteInboxSection({ invites, onRefresh, onJoin, onDismi
 
   return (
     <Section
+      id="invite-inbox"
       number="01·A"
       title="받은 초대 알림"
       description={`${currentUser?.studentId ? `학번 ${currentUser.studentId}` : '내'} 앞으로 도착한 팀 초대를 확인하세요.`}

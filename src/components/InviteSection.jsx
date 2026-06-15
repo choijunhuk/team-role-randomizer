@@ -100,6 +100,7 @@ export default function InviteSection({ currentUser, onNotify, sentInvites = [],
 
   return (
     <Section
+      id="invites"
       number="01·B"
       title="학번으로 초대"
       description="학번 명단을 입력하면 초대 링크를 만들고 COMS 계정 알림으로 보낼 수 있습니다."

@@ -1,6 +1,6 @@
-export default function Section({ number, title, description, actions, children, className = '' }) {
+export default function Section({ id, number, title, description, actions, children, className = '' }) {
   return (
-    <section className={`panel ${className}`}>
+    <section id={id} className={`panel ${className}`}>
       <header className="section-header">
         <div>
           <span className="eyebrow">STEP {number}</span>
