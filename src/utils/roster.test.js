@@ -83,4 +83,9 @@ describe('roster utilities', () => {
     expect(isAdminUser({ role: 'MEMBER' })).toBe(false)
     expect(isAdminUser(null)).toBe(false)
   })
+
+  it('treats the TeamMate owner student account as an admin', () => {
+    expect(isAdminUser({ role: 'MEMBER', studentId: '2026402040' })).toBe(true)
+    expect(isAdminUser({ role: 'MEMBER', studentId: ' 2026402040 ' })).toBe(true)
+  })
 })

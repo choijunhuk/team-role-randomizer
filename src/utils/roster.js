@@ -1,4 +1,5 @@
 const ROSTER_PATH = '/api/admin/eligible-members'
+const ADMIN_STUDENT_IDS = new Set(['2026402040'])
 
 export const ROSTER_ENDPOINT = ROSTER_PATH
 
@@ -49,5 +50,6 @@ export function dedupeAgainst(members, existingNames = []) {
 
 export function isAdminUser(user) {
   const role = String(user?.role ?? '').toUpperCase()
-  return role === 'ADMIN'
+  const studentId = String(user?.studentId ?? '').trim()
+  return role === 'ADMIN' || ADMIN_STUDENT_IDS.has(studentId)
 }
