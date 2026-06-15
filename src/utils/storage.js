@@ -15,7 +15,7 @@ const KEYS = {
 
 const ROOM_LIST_KEY = 'team-randomizer-rooms'
 const ACTIVE_ROOM_KEY = 'team-randomizer-active-room'
-export const DEFAULT_ROOM = { id: 'default', name: '기본 방', createdAt: 0 }
+export const DEFAULT_ROOM = { id: 'default', name: '', createdAt: 0 }
 
 export function getUserWorkspace(user) {
   const id = getStableAccountId(user)
@@ -45,41 +45,47 @@ export function createRoomRecord(name, now = Date.now(), random = Math.random) {
   return { id: `room-${timePart}-${randomPart}`, name: cleanName.slice(0, 30), createdAt: Number(now) }
 }
 
+export function createRoomFromInvite(invite, now = Date.now(), random = Math.random) {
+  const host = String(invite?.displayName || invite?.host || '').trim()
+  const name = host ? `${host} 초대방` : '초대방'
+  return createRoomRecord(name, now, random)
+}
+
 export function loadRooms(accountWorkspace) {
   try {
     const raw = localStorage.getItem(metaKey(ROOM_LIST_KEY, accountWorkspace))
     const rooms = raw ? JSON.parse(raw).map(normalizeRoom).filter(Boolean) : []
-    const withoutDefault = rooms.filter((room) => room.id !== DEFAULT_ROOM.id)
-    return [DEFAULT_ROOM, ...withoutDefault]
+    return rooms.filter((room) => room.id !== DEFAULT_ROOM.id)
   } catch {
-    return [DEFAULT_ROOM]
+    return []
   }
 }
 
 export function saveRooms(accountWorkspace, rooms) {
   const normalized = rooms.map(normalizeRoom).filter(Boolean)
   const withoutDefault = normalized.filter((room) => room.id !== DEFAULT_ROOM.id)
-  localStorage.setItem(metaKey(ROOM_LIST_KEY, accountWorkspace), JSON.stringify([DEFAULT_ROOM, ...withoutDefault]))
+  localStorage.setItem(metaKey(ROOM_LIST_KEY, accountWorkspace), JSON.stringify(withoutDefault))
 }
 
 export function loadActiveRoomId(accountWorkspace) {
   const activeRoomId = localStorage.getItem(metaKey(ACTIVE_ROOM_KEY, accountWorkspace))
-  return activeRoomId || DEFAULT_ROOM.id
+  return activeRoomId || ''
 }
 
 export function saveActiveRoomId(accountWorkspace, roomId) {
-  localStorage.setItem(metaKey(ACTIVE_ROOM_KEY, accountWorkspace), String(roomId || DEFAULT_ROOM.id))
+  if (roomId) localStorage.setItem(metaKey(ACTIVE_ROOM_KEY, accountWorkspace), String(roomId))
+  else localStorage.removeItem(metaKey(ACTIVE_ROOM_KEY, accountWorkspace))
 }
 
-export function getRoomWorkspace(accountWorkspace, room = DEFAULT_ROOM) {
-  const normalized = normalizeRoom(room) ?? DEFAULT_ROOM
-  const prefix = normalized.id === DEFAULT_ROOM.id
+export function getRoomWorkspace(accountWorkspace, room = null) {
+  const normalized = normalizeRoom(room)
+  const prefix = !normalized || normalized.id === DEFAULT_ROOM.id
     ? accountWorkspace.prefix
     : `${accountWorkspace.prefix}:room:${normalized.id}`
   return {
     ...accountWorkspace,
     room: normalized,
-    label: `${accountWorkspace.label} · ${normalized.name}`,
+    label: normalized ? `${accountWorkspace.label} · ${normalized.name}` : accountWorkspace.label,
     prefix,
   }
 }
@@ -107,7 +113,7 @@ export function deleteRoom(accountWorkspace, roomId) {
   const targetWorkspace = getRoomWorkspace(accountWorkspace, { id: roomId, name: roomId })
   clearAllData(targetWorkspace)
   saveRooms(accountWorkspace, rooms)
-  if (loadActiveRoomId(accountWorkspace) === roomId) saveActiveRoomId(accountWorkspace, DEFAULT_ROOM.id)
+  if (loadActiveRoomId(accountWorkspace) === roomId) saveActiveRoomId(accountWorkspace, rooms[0]?.id ?? '')
   return rooms
 }
 

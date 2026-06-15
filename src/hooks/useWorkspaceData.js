@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   clearAllData,
+  createRoomFromInvite,
   createRoomRecord,
   deleteRoom,
   getRoomWorkspace,
@@ -26,7 +27,7 @@ export function useWorkspaceData(currentUser) {
 
   const [rooms, setRooms] = useState(() => loadRooms(accountWorkspace))
   const [activeRoomId, setActiveRoomId] = useState(() => loadActiveRoomId(accountWorkspace))
-  const activeRoom = rooms.find((room) => room.id === activeRoomId) ?? rooms[0]
+  const activeRoom = rooms.find((room) => room.id === activeRoomId) ?? rooms[0] ?? null
   const workspace = useMemo(() => getRoomWorkspace(accountWorkspace, activeRoom), [accountWorkspace, activeRoom])
   const [loadedWorkspacePrefix, setLoadedWorkspacePrefix] = useState(workspace.prefix)
   const [participants, setParticipants] = useState(() => loadData('participants', [], workspace))
@@ -42,7 +43,7 @@ export function useWorkspaceData(currentUser) {
     const nextRooms = loadRooms(accountWorkspace)
     setRooms(nextRooms)
     const nextActiveRoomId = loadActiveRoomId(accountWorkspace)
-    setActiveRoomId(nextRooms.some((room) => room.id === nextActiveRoomId) ? nextActiveRoomId : nextRooms[0].id)
+    setActiveRoomId(nextRooms.some((room) => room.id === nextActiveRoomId) ? nextActiveRoomId : nextRooms[0]?.id ?? '')
   }, [accountWorkspace])
 
   useEffect(() => {
@@ -98,10 +99,26 @@ export function useWorkspaceData(currentUser) {
     return room
   }
 
+  const createInviteRoom = (invite, participantName) => {
+    const room = createRoomFromInvite(invite)
+    const roomWorkspace = getRoomWorkspace(accountWorkspace, room)
+    const nextParticipants = participantName ? [participantName] : []
+    saveData('participants', nextParticipants, roomWorkspace)
+    setRooms((items) => [...items, room])
+    setActiveRoomId(room.id)
+    setParticipants(nextParticipants)
+    setProfiles({})
+    setRoles(DEFAULT_ROLES)
+    setRoleRules({})
+    setHistories([])
+    setFairness(EMPTY_FAIRNESS)
+    return room
+  }
+
   const removeRoom = (roomId) => {
     const nextRooms = deleteRoom(accountWorkspace, roomId)
     setRooms(nextRooms)
-    setActiveRoomId((current) => current === roomId ? nextRooms[0].id : current)
+    setActiveRoomId((current) => current === roomId ? nextRooms[0]?.id ?? '' : current)
   }
 
   return {
@@ -128,6 +145,7 @@ export function useWorkspaceData(currentUser) {
     importLegacyWorkspace,
     resetWorkspace,
     createRoom,
+    createInviteRoom,
     setActiveRoomId,
     removeRoom,
   }

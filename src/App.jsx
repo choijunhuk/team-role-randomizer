@@ -15,14 +15,13 @@ import WorkspaceNav from './components/WorkspaceNav'
 import { DEFAULT_ROLES, EMPTY_FAIRNESS, useWorkspaceData } from './hooks/useWorkspaceData'
 import { useInviteState } from './hooks/useInviteState'
 import { parseParticipantInput } from './utils/participants'
-import { isAdminUser } from './utils/roster'
 import { assignRoles, createTeams, decodeShareData, encodeShareData, resultToText, validateTeamConstraints } from './utils/teamUtils'
 
 const clone = (value) => structuredClone(value)
 
 export default function App({ currentUser, logoutError, logoutPending, onLogout }) {
   const workspaceData = useWorkspaceData(currentUser)
-  const { rooms, activeRoomId, workspace, participants, setParticipants, profiles, setProfiles, roles, setRoles, roleRules, setRoleRules, histories, setHistories, fairness, setFairness, theme, setTheme, legacyDataAvailable, importLegacyWorkspace, resetWorkspace, createRoom, setActiveRoomId, removeRoom } = workspaceData
+  const { rooms, activeRoomId, workspace, participants, setParticipants, profiles, setProfiles, roles, setRoles, roleRules, setRoleRules, histories, setHistories, fairness, setFairness, theme, setTheme, legacyDataAvailable, importLegacyWorkspace, resetWorkspace, createRoom, createInviteRoom, setActiveRoomId, removeRoom } = workspaceData
   const [mode, setMode] = useState('count')
   const [settingValue, setSettingValue] = useState('2')
   const [teams, setTeams] = useState([])
@@ -32,14 +31,13 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
   const [toast, setToast] = useState('')
   const [qr, setQr] = useState('')
   const notify = useCallback((text) => { setToast(text); window.setTimeout(() => setToast(''), 2400) }, [])
-  const isAdmin = isAdminUser(currentUser)
 
   const expectedTeams = useMemo(() => {
     const value = Number(settingValue)
     return Number.isInteger(value) && value > 0 ? mode === 'count' ? value : Math.ceil(participants.length / value) : 0
   }, [mode, settingValue, participants.length])
   const constraintReport = useMemo(() => validateTeamConstraints(participants, expectedTeams, fairness), [participants, expectedTeams, fairness])
-  const { inbox, setInbox, sentInvites, recordSentInvite, deleteSentInvite, joinInvite, dismissInvite, addNotificationInvite, resetInvites } = useInviteState({ currentUser, workspace, setParticipants, notify })
+  const { inbox, setInbox, sentInvites, recordSentInvite, deleteSentInvite, joinInvite, dismissInvite, addNotificationInvite, resetInvites } = useInviteState({ currentUser, workspace, setParticipants, createInviteRoom, notify })
 
   useEffect(() => {
     const hash = new URLSearchParams(location.hash.slice(1)).get('share')
@@ -131,7 +129,7 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
   }
   const deleteWorkspaceRoom = (roomId) => {
     const room = rooms.find((item) => item.id === roomId)
-    if (!room || room.id === 'default') return
+    if (!room) return
     if (!window.confirm(`${room.name} 방을 삭제할까요? 이 방의 참가자와 기록이 삭제됩니다.`)) return
     removeRoom(roomId)
     setTeams([])
@@ -139,41 +137,7 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
     notify(`${room.name} 방을 삭제했습니다.`)
   }
 
-  const topbar = <nav className="topbar"><BrandLogo href="#" /><div><span className="user-chip">{isAdmin ? `${workspace.label} · 개인 작업공간` : `${workspace.label} · 초대 전용`}</span><NotificationBell onInvite={addNotificationInvite} /><button className="icon-button" aria-label={theme === 'light' ? '다크 모드로 변경' : '라이트 모드로 변경'} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Moon size={16} aria-hidden="true" /> : <Sun size={16} aria-hidden="true" />}</button>{isAdmin && <button className="button ghost small" onClick={resetAll}>현재 방 초기화</button>}<button className="button ghost small" disabled={logoutPending} onClick={onLogout}>{logoutPending ? '로그아웃 중...' : '로그아웃'}</button></div></nav>
-
-  if (!isAdmin) {
-    return <div className="app-shell">
-      {topbar}
-      <RoomSwitcher
-        rooms={rooms}
-        activeRoomId={activeRoomId}
-        participantCount={sentInvites.length}
-        onSelectRoom={selectWorkspaceRoom}
-        onCreateRoom={createWorkspaceRoom}
-        onDeleteRoom={deleteWorkspaceRoom}
-      />
-      {logoutError && <div className="global-notice notice error" role="alert">{logoutError}</div>}
-      <header className="hero workspace-hero invite-only-hero">
-        <div>
-          <span className="hero-chip">INVITE ONLY</span>
-          <h1>초대 전용</h1>
-          <p>일반 회원은 도착한 초대를 확인하고, 필요한 사람에게 초대 링크나 COMS 알림을 보내는 기능만 사용할 수 있습니다.</p>
-        </div>
-        <div className="hero-actions">
-          <div className="hero-stats">
-            <div><strong>{inbox.length}</strong><span>받은 초대</span></div>
-            <div><strong>{sentInvites.length}</strong><span>보낸 초대</span></div>
-          </div>
-        </div>
-      </header>
-      <main className="invite-only-layout">
-        <InviteInboxSection invites={inbox} currentUser={currentUser} onRefresh={(next) => setInbox(next)} onJoin={joinInvite} onDismiss={dismissInvite} />
-        <InviteSection currentUser={currentUser} onNotify={notify} sentInvites={sentInvites} onRecordSentInvite={recordSentInvite} onDeleteSentInvite={deleteSentInvite} />
-      </main>
-      <footer>팀메이트 · 일반 회원은 초대 기능만 사용할 수 있습니다. · Made by 최준혁</footer>
-      {toast && <div className="toast">{toast}</div>}
-    </div>
-  }
+  const topbar = <nav className="topbar"><BrandLogo href="#" /><div><span className="user-chip">{workspace.label} · 개인 작업공간</span><NotificationBell onInvite={addNotificationInvite} /><button className="icon-button" aria-label={theme === 'light' ? '다크 모드로 변경' : '라이트 모드로 변경'} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Moon size={16} aria-hidden="true" /> : <Sun size={16} aria-hidden="true" />}</button><button className="button ghost small" onClick={resetAll}>현재 방 초기화</button><button className="button ghost small" disabled={logoutPending} onClick={onLogout}>{logoutPending ? '로그아웃 중...' : '로그아웃'}</button></div></nav>
 
   return <div className="app-shell">
     {topbar}
@@ -190,8 +154,8 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
     <header className="hero workspace-hero">
       <div>
         <span className="hero-chip">TEAM ROOM</span>
-        <h1>{workspace.room?.name ?? '기본 방'}</h1>
-        <p>참가자를 넣고 팀 기준만 정하면 바로 배정할 수 있습니다. 초대·역할·기록은 아래 작업 흐름에서 관리하세요.</p>
+        <h1>{workspace.room?.name ?? '새 방을 만들거나 초대를 수락하세요'}</h1>
+        <p>참가자를 넣고 팀 기준만 정하면 바로 배정할 수 있습니다. 일반 회원도 명단을 제외한 팀 배정·초대·역할·기록 기능을 사용할 수 있습니다.</p>
       </div>
       <div className="hero-actions">
         <div className="hero-stats">

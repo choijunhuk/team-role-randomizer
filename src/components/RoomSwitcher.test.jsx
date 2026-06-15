@@ -8,7 +8,7 @@ describe('RoomSwitcher', () => {
     const markup = renderToStaticMarkup(
       <RoomSwitcher
         rooms={[
-          { id: 'default', name: '기본 방', createdAt: 0 },
+          { id: 'room-project', name: '프로젝트 방', createdAt: 0 },
           { id: 'room-study', name: '스터디 방', createdAt: 1 },
         ]}
         activeRoomId="room-study"

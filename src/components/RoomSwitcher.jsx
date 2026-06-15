@@ -15,10 +15,11 @@ export default function RoomSwitcher({ rooms, activeRoomId, participantCount, on
     <section className="room-switcher" aria-label="팀 방 관리">
       <div className="room-current">
         <span>현재 방</span>
-        <strong>{activeRoom?.name ?? '기본 방'}</strong>
+        <strong>{activeRoom?.name ?? '방 없음'}</strong>
         <small>참가자 {participantCount}명</small>
       </div>
       <div className="room-tabs" role="tablist" aria-label="방 목록">
+        {rooms.length === 0 && <span className="empty-inline">방을 만들거나 받은 초대에 합류하세요.</span>}
         {rooms.map((room) => (
           <button
             key={room.id}
@@ -44,7 +45,7 @@ export default function RoomSwitcher({ rooms, activeRoomId, participantCount, on
           <Plus size={14} aria-hidden="true" />방 만들기
         </button>
       </form>
-      {activeRoomId !== 'default' && (
+      {activeRoomId && (
         <button type="button" className="text-button danger room-delete" onClick={() => onDeleteRoom(activeRoomId)}>
           <Trash2 size={14} aria-hidden="true" />현재 방 삭제
         </button>

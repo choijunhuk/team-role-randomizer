@@ -1,7 +1,7 @@
 import { Bell, ClipboardList, History, Shuffle, SlidersHorizontal, UserRound, Wand2 } from 'lucide-react'
 
 const items = [
-  { href: '#participants', label: '참가자', helper: '명단 입력', key: 'participants', unit: '명', icon: UserRound },
+  { href: '#participants', label: '참가자', helper: '직접 입력', key: 'participants', unit: '명', icon: UserRound },
   { href: '#team-settings', label: '팀 설정', helper: '인원 기준', key: 'teams', unit: '팀', icon: SlidersHorizontal },
   { href: '#invites', label: '초대', helper: '알림/링크', key: 'invites', unit: '건', icon: Bell },
   { href: '#roles', label: '역할', helper: '역할 규칙', key: 'roles', unit: '개', icon: ClipboardList },

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   createRoomRecord,
+  createRoomFromInvite,
   deleteRoom,
   getRoomWorkspace,
   getUserWorkspace,
@@ -85,7 +86,7 @@ describe('workspace storage', () => {
 
   it('creates room workspaces under the same COMS account without mixing participants', () => {
     const account = getUserWorkspace({ studentId: '2026123456', name: '김컴스' })
-    const firstRoom = { id: 'default', name: '기본 방' }
+    const firstRoom = { id: 'room-first', name: '첫 방' }
     const secondRoom = { id: 'room-study', name: '스터디 방' }
     const firstWorkspace = getRoomWorkspace(account, firstRoom)
     const secondWorkspace = getRoomWorkspace(account, secondRoom)
@@ -95,32 +96,48 @@ describe('workspace storage', () => {
 
     expect(loadData('participants', [], firstWorkspace)).toEqual(['1번 방'])
     expect(loadData('participants', [], secondWorkspace)).toEqual(['2번 방'])
-    expect(firstWorkspace.label).toBe('김컴스 · 기본 방')
+    expect(firstWorkspace.label).toBe('김컴스 · 첫 방')
     expect(secondWorkspace.label).toBe('김컴스 · 스터디 방')
   })
 
-  it('stores the room list at account scope and keeps a default room', () => {
+  it('stores the room list at account scope without adding a default room', () => {
     const account = getUserWorkspace({ studentId: '2026123456', name: '김컴스' })
     const studyRoom = createRoomRecord('  스터디 방  ', 1000, () => 0.1234)
 
     saveRooms(account, [studyRoom])
 
     expect(studyRoom).toMatchObject({ id: 'room-rs-4fxc', name: '스터디 방' })
-    expect(loadRooms(account)).toEqual([{ id: 'default', name: '기본 방', createdAt: 0 }, studyRoom])
+    expect(loadRooms(account)).toEqual([studyRoom])
+  })
+
+  it('loads an empty room list when the account has no rooms yet', () => {
+    const account = getUserWorkspace({ studentId: '2026123456', name: '김컴스' })
+
+    expect(loadRooms(account)).toEqual([])
   })
 
   it('deletes only the selected non-default room data', () => {
     const account = getUserWorkspace({ studentId: '2026123456', name: '김컴스' })
-    const defaultRoom = { id: 'default', name: '기본 방', createdAt: 0 }
+    const firstRoom = { id: 'room-first', name: '첫 방', createdAt: 0 }
     const studyRoom = { id: 'room-study', name: '스터디 방' }
-    saveRooms(account, [defaultRoom, studyRoom])
-    saveData('participants', ['기본'], getRoomWorkspace(account, defaultRoom))
+    saveRooms(account, [firstRoom, studyRoom])
+    saveData('participants', ['첫 방'], getRoomWorkspace(account, firstRoom))
     saveData('participants', ['스터디'], getRoomWorkspace(account, studyRoom))
 
     deleteRoom(account, 'room-study')
 
-    expect(loadRooms(account)).toEqual([defaultRoom])
-    expect(loadData('participants', [], getRoomWorkspace(account, defaultRoom))).toEqual(['기본'])
+    expect(loadRooms(account)).toEqual([firstRoom])
+    expect(loadData('participants', [], getRoomWorkspace(account, firstRoom))).toEqual(['첫 방'])
     expect(loadData('participants', [], getRoomWorkspace(account, studyRoom))).toEqual([])
+  })
+
+  it('creates a room name from the invite host when a member joins an invite', () => {
+    const room = createRoomFromInvite(
+      { displayName: '홍길동', message: '프로젝트 팀플 같이 해요' },
+      1000,
+      () => 0.1234,
+    )
+
+    expect(room).toMatchObject({ id: 'room-rs-4fxc', name: '홍길동 초대방' })
   })
 })

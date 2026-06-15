@@ -15,7 +15,7 @@ beforeEach(() => {
 })
 
 describe('App role-based workspace', () => {
-  it('shows only invitation tools to non-admin members', () => {
+  it('lets non-admin members use the workspace while hiding the roster picker', () => {
     const markup = renderToStaticMarkup(
       <App
         currentUser={{ role: 'MEMBER', studentId: '20250000', name: '일반회원' }}
@@ -25,13 +25,16 @@ describe('App role-based workspace', () => {
       />,
     )
 
-    expect(markup).toContain('초대 전용')
     expect(markup).toContain('방 만들기')
     expect(markup).toContain('새 방 이름')
     expect(markup).toContain('받은 초대')
     expect(markup).toContain('초대 대상')
-    expect(markup).not.toContain('TEAM ROOM')
-    expect(markup).not.toContain('랜덤 팀 배정하기')
-    expect(markup).not.toContain('참가자 입력')
+    expect(markup).toContain('TEAM ROOM')
+    expect(markup).toContain('랜덤 팀 배정하기')
+    expect(markup).toContain('참가자 입력')
+    expect(markup).not.toContain('명단 0명')
+    expect(markup).not.toContain('명단 새로고침')
+    expect(markup).not.toContain('초대 전용')
+    expect(markup).not.toContain('기본 방')
   })
 })

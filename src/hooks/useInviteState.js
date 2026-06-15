@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { clearInviteHash, fetchInviteInbox, inviteToken, markInviteRead, matchesStudentId, mergeInvites, mergeSentInvites, readInviteFromLocation, removeInviteByToken } from '../utils/invite'
 import { loadData, saveData } from '../utils/storage'
 
-export function useInviteState({ currentUser, workspace, setParticipants, notify }) {
+export function useInviteState({ currentUser, workspace, setParticipants, createInviteRoom, notify }) {
   const [loadedWorkspacePrefix, setLoadedWorkspacePrefix] = useState(workspace.prefix)
   const [inbox, setInbox] = useState(() => loadData('inbox', [], workspace))
   const [sentInvites, setSentInvites] = useState(() => loadData('sentInvites', [], workspace))
@@ -50,10 +50,14 @@ export function useInviteState({ currentUser, workspace, setParticipants, notify
 
   const joinInvite = (invite) => {
     const displayName = currentUser?.name?.trim() || `학번 ${currentUser?.studentId ?? ''}`
-    setParticipants((prev) => prev.includes(displayName) ? prev : [...prev, displayName])
+    if (createInviteRoom) {
+      createInviteRoom(invite, displayName)
+    } else {
+      setParticipants((prev) => prev.includes(displayName) ? prev : [...prev, displayName])
+    }
     setInbox((prev) => prev.map((item) => item.token === invite.token ? { ...item, seenAt: Date.now() } : item))
     if (invite.remoteId) markInviteRead(invite.remoteId)
-    notify(`${invite.displayName || invite.host || '초대'}에 합류했습니다.`)
+    notify(`${invite.displayName || invite.host || '초대'}에 합류하고 새 방을 만들었습니다.`)
   }
 
   const dismissInvite = (invite) => setInbox((prev) => removeInviteByToken(prev, invite))
