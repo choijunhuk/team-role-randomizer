@@ -33,5 +33,12 @@ jobs:
         run: curl --fail --retry 5 --retry-delay 3 "https://${{ secrets.DEPLOY_HOST }}/team-randomizer/"
       - name: Verify auth API boundary
         run: |
-          status="$(curl -sS -o /dev/null -w '%{http_code}' "https://${{ secrets.DEPLOY_HOST }}/api/auth/me")"
-          test "$status" = "401" -o "$status" = "403"
+          for attempt in 1 2 3 4 5; do
+            status="$(curl -sS -o /dev/null -w '%{http_code}' "https://${{ secrets.DEPLOY_HOST }}/api/auth/me")"
+            echo "auth boundary status: ${status} (attempt ${attempt})"
+            if [ "$status" = "401" ] || [ "$status" = "403" ]; then
+              exit 0
+            fi
+            sleep 3
+          done
+          exit 1
