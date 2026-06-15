@@ -15,6 +15,120 @@ export function parseStudentIds(raw) {
   )]
 }
 
+function normalizeName(value) {
+  return String(value ?? '').trim().replace(/\s+/g, ' ')
+}
+
+function normalizeGeneration(value) {
+  const text = String(value ?? '').trim().replace(/\s+/g, '')
+  const match = text.match(/^(\d+)기?$/)
+  return match ? `${match[1]}기` : ''
+}
+
+function uniqueBy(items, keyFn) {
+  const seen = new Set()
+  return items.filter((item) => {
+    const key = keyFn(item)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+function normalizeInviteTarget(raw) {
+  if (!raw) return null
+  const name = normalizeName(raw.name)
+  const identifierType = raw.identifierType === 'generation' ? 'generation' : 'studentId'
+  if (identifierType === 'generation') {
+    const generation = normalizeGeneration(raw.generation ?? raw.identifier)
+    if (!name || !generation) return null
+    return { label: `${name} (${generation})`, name, identifier: generation, identifierType, generation }
+  }
+  const studentId = normalizeStudentId(raw.studentId ?? raw.identifier)
+  if (!studentId) return null
+  return {
+    label: name ? `${name} (${studentId})` : studentId,
+    name,
+    identifier: studentId,
+    identifierType,
+    studentId,
+  }
+}
+
+function normalizeInviteTargets(targets = []) {
+  return uniqueBy(
+    (Array.isArray(targets) ? targets : []).map(normalizeInviteTarget).filter(Boolean),
+    (target) => `${target.identifierType}:${target.name}:${target.identifier}`,
+  )
+}
+
+function splitInviteTargetInput(raw) {
+  return String(raw ?? '')
+    .split(/[,\n;]+/)
+    .flatMap((chunk) => {
+      const text = chunk.trim()
+      if (!text) return []
+      if (/\([^()]+\)$/.test(text)) return [text]
+      return text.split(/\s+/).filter(Boolean)
+    })
+}
+
+export function parseInviteTargets(raw) {
+  const targets = []
+  const errors = []
+
+  splitInviteTargetInput(raw).forEach((token) => {
+    const wrapped = token.match(/^(.+?)\s*\(([^()]+)\)$/)
+    if (wrapped) {
+      const name = normalizeName(wrapped[1])
+      const identifier = String(wrapped[2] ?? '').trim()
+      const generation = normalizeGeneration(identifier)
+      const target = generation
+        ? normalizeInviteTarget({ name, identifierType: 'generation', generation })
+        : normalizeInviteTarget({ name, identifierType: 'studentId', studentId: identifier })
+      if (target) targets.push(target)
+      else errors.push(`${token} 형식을 확인해주세요. 예: 홍길동 (20251234), 이정원 (17기)`)
+      return
+    }
+
+    const studentId = normalizeStudentId(token)
+    if (studentId) targets.push(normalizeInviteTarget({ studentId }))
+    else errors.push(`${token} 형식을 확인해주세요. 이름 (학번) 또는 이름 (17기)로 입력해주세요.`)
+  })
+
+  const normalizedTargets = normalizeInviteTargets(targets)
+  return {
+    targets: normalizedTargets,
+    studentIds: normalizedTargets
+      .filter((target) => target.identifierType === 'studentId')
+      .map((target) => target.studentId),
+    errors,
+  }
+}
+
+export function findAmbiguousGenerationTargets(targets = [], rosterMembers = []) {
+  const counts = new Map()
+  rosterMembers.forEach((member) => {
+    const name = normalizeName(member?.name)
+    const generation = normalizeGeneration(member?.generation)
+    if (!name || !generation) return
+    const key = `${name}::${generation}`
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  })
+
+  return uniqueBy(
+    targets
+      .filter((target) => target.identifierType === 'generation')
+      .map((target) => {
+        const key = `${normalizeName(target.name)}::${normalizeGeneration(target.generation)}`
+        const count = counts.get(key) ?? 0
+        return count > 1 ? { name: target.name, generation: target.generation, count } : null
+      })
+      .filter(Boolean),
+    (item) => `${item.name}::${item.generation}`,
+  )
+}
+
 export function encodeInvite(payload) {
   return btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
 }
@@ -23,10 +137,16 @@ export function decodeInvite(value) {
   return JSON.parse(decodeURIComponent(escape(atob(value))))
 }
 
-export function buildInviteUrl({ studentIds, message, host, displayName }) {
+export function buildInviteUrl({ studentIds = [], targets = [], message, host, displayName }) {
+  const normalizedTargets = normalizeInviteTargets(targets)
+  const targetStudentIds = normalizedTargets
+    .filter((target) => target.identifierType === 'studentId')
+    .map((target) => target.studentId)
+  const normalizedStudentIds = [...new Set([...parseStudentIds(Array.isArray(studentIds) ? studentIds.join('\n') : studentIds), ...targetStudentIds])]
   const payload = {
     v: 1,
-    studentIds: studentIds.map(normalizeStudentId).filter(Boolean),
+    studentIds: normalizedStudentIds,
+    targets: normalizedTargets,
     message: String(message ?? '').slice(0, 280),
     host: host ? String(host).slice(0, 60) : '',
     displayName: displayName ? String(displayName).slice(0, 60) : '',
@@ -45,8 +165,10 @@ export function readInviteFromLocation(hash = location.hash) {
   if (!raw) return null
   try {
     const payload = decodeInvite(raw)
-    if (!Array.isArray(payload?.studentIds) || payload.studentIds.length === 0) return null
-    return payload
+    const studentIds = parseStudentIds(Array.isArray(payload?.studentIds) ? payload.studentIds.join('\n') : payload?.studentIds)
+    const targets = normalizeInviteTargets(payload?.targets)
+    if (!studentIds.length && !targets.length) return null
+    return targets.length ? { ...payload, studentIds, targets } : { ...payload, studentIds }
   } catch {
     return null
   }
@@ -63,8 +185,16 @@ export function clearInviteHash() {
 
 export function matchesStudentId(payload, user) {
   const target = normalizeStudentId(user?.studentId)
-  if (!target) return false
-  return payload.studentIds.some((value) => normalizeStudentId(value) === target)
+  const studentMatch = target && payload.studentIds?.some((value) => normalizeStudentId(value) === target)
+  if (studentMatch) return true
+  const name = normalizeName(user?.name)
+  const generation = normalizeGeneration(user?.generation)
+  if (!name) return false
+  return normalizeInviteTargets(payload?.targets).some((item) => (
+    item.identifierType === 'generation'
+    && normalizeName(item.name) === name
+    && (!generation || item.generation === generation)
+  ))
 }
 
 export async function postInviteNotification(payload, fetcher = fetch) {
@@ -110,7 +240,8 @@ export const INVITE_INBOX_PATH = INBOX_PATH
 
 export function inviteToken(invite) {
   if (invite?.token) return String(invite.token)
-  const seed = `${invite?.host ?? ''}|${invite?.issuedAt ?? ''}|${(invite?.studentIds ?? []).join(',')}|${invite?.message ?? ''}`
+  const targetSeed = normalizeInviteTargets(invite?.targets).map((target) => target.label).join(',')
+  const seed = `${invite?.host ?? ''}|${invite?.issuedAt ?? ''}|${(invite?.studentIds ?? []).join(',')}|${targetSeed}|${invite?.message ?? ''}`
   let hash = 0
   for (let index = 0; index < seed.length; index += 1) {
     hash = (hash * 31 + seed.charCodeAt(index)) | 0
@@ -129,20 +260,26 @@ function hashSeed(seed) {
 function sentInviteToken(invite) {
   if (invite?.token) return String(invite.token)
   const recipients = (invite?.studentIds ?? []).map(normalizeStudentId).filter(Boolean).sort().join(',')
-  return `sent-${hashSeed(`${invite?.inviteUrl ?? ''}|${recipients}|${invite?.message ?? ''}`)}`
+  const targets = normalizeInviteTargets(invite?.targets).map((target) => target.label).sort().join(',')
+  return `sent-${hashSeed(`${invite?.inviteUrl ?? ''}|${recipients}|${targets}|${invite?.message ?? ''}`)}`
 }
 
 function normalizeSentInvite(raw) {
   if (!raw) return null
   const rawStudentIds = raw.studentIds ?? []
-  const studentIds = parseStudentIds(Array.isArray(rawStudentIds) ? rawStudentIds.join('\n') : rawStudentIds)
-  if (!studentIds.length) return null
+  const targets = normalizeInviteTargets(raw.targets)
+  const studentIds = [...new Set([
+    ...parseStudentIds(Array.isArray(rawStudentIds) ? rawStudentIds.join('\n') : rawStudentIds),
+    ...targets.filter((target) => target.identifierType === 'studentId').map((target) => target.studentId),
+  ])]
+  if (!studentIds.length && !targets.length) return null
   const createdAt = Number(raw.createdAt ?? raw.issuedAt ?? Date.now())
   const updatedAt = Number(raw.updatedAt ?? Date.now())
   return {
-    token: sentInviteToken({ ...raw, studentIds }),
+    token: sentInviteToken({ ...raw, studentIds, targets }),
     studentIds,
-    targetCount: studentIds.length,
+    targets,
+    targetCount: targets.length || studentIds.length,
     message: String(raw.message ?? '').slice(0, 300),
     inviteUrl: String(raw.inviteUrl ?? raw.acceptUrl ?? ''),
     status: ['generated', 'sent', 'failed'].includes(raw.status) ? raw.status : 'generated',
@@ -175,10 +312,15 @@ function parseIssuedAt(value) {
 
 function normalizeInvite(raw) {
   if (!raw) return null
-  const studentIds = (raw.studentIds ?? raw.targets ?? []).map(normalizeStudentId).filter(Boolean)
+  const targets = normalizeInviteTargets(raw.targets)
+  const studentIds = [...new Set([
+    ...(raw.studentIds ?? []).map(normalizeStudentId).filter(Boolean),
+    ...targets.filter((target) => target.identifierType === 'studentId').map((target) => target.studentId),
+  ])]
   const remoteId = raw.id ?? raw.notificationId
   const invite = {
     studentIds,
+    targets,
     message: String(raw.message ?? '').slice(0, 300),
     host: String(raw.host ?? raw.actorStudentId ?? raw.from ?? '').slice(0, 60),
     displayName: String(raw.displayName ?? raw.actorLabel ?? raw.hostName ?? '').slice(0, 60),
@@ -187,7 +329,7 @@ function normalizeInvite(raw) {
     seenAt: raw.seenAt ? Number(raw.seenAt) : raw.read ? Date.now() : null,
     remoteId: remoteId == null ? null : String(remoteId),
   }
-  if (!studentIds.length && !invite.remoteId) return null
+  if (!studentIds.length && !targets.length && !invite.remoteId) return null
   invite.token = raw.token
     ? String(raw.token)
     : invite.remoteId

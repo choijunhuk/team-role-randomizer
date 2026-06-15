@@ -6,12 +6,14 @@ import {
   encodeInvite,
   fetchAllNotifications,
   fetchInviteInbox,
+  findAmbiguousGenerationTargets,
   inviteToken,
   markAllNotificationsRead,
   matchesStudentId,
   mergeInvites,
   mergeSentInvites,
   normalizeStudentId,
+  parseInviteTargets,
   parseStudentIds,
   postInviteNotification,
   readInviteFromLocation,
@@ -34,6 +36,27 @@ describe('invite utilities', () => {
   it('parses mixed-delimiter input into a unique student id list', () => {
     const ids = parseStudentIds('20251234, 2025-1234\n20259999;20240001\t20240001')
     expect(ids).toEqual(['20251234', '20259999', '20240001'])
+  })
+
+  it('parses invite targets written as name plus student id or generation', () => {
+    const result = parseInviteTargets('김민수 (2025-1234)\n이정원 (17기)\n20259999')
+    expect(result.errors).toEqual([])
+    expect(result.studentIds).toEqual(['20251234', '20259999'])
+    expect(result.targets).toEqual([
+      { label: '김민수 (20251234)', name: '김민수', identifier: '20251234', identifierType: 'studentId', studentId: '20251234' },
+      { label: '이정원 (17기)', name: '이정원', identifier: '17기', identifierType: 'generation', generation: '17기' },
+      { label: '20259999', name: '', identifier: '20259999', identifierType: 'studentId', studentId: '20259999' },
+    ])
+  })
+
+  it('detects same-name same-generation invite targets from the roster', () => {
+    const result = parseInviteTargets('이정원 (17기)')
+    const ambiguous = findAmbiguousGenerationTargets(result.targets, [
+      { name: '이정원', generation: '17', studentId: '20170001' },
+      { name: '이정원', generation: '17기', studentId: '20170002' },
+      { name: '이정원', generation: '18기', studentId: '20180001' },
+    ])
+    expect(ambiguous).toEqual([{ name: '이정원', generation: '17기', count: 2 }])
   })
 
   it('round-trips invite payloads through encode/decode', () => {
@@ -187,9 +210,20 @@ describe('invite utilities', () => {
     })
   })
 
-  it('rejects invite hash payloads with no recipient student ids', () => {
-    const empty = encodeInvite({ v: 1, studentIds: [], message: '', host: '', displayName: '', issuedAt: 1 })
-    expect(readInviteFromLocation(`#invite=${encodeURIComponent(empty)}`)).toBeNull()
+  it('allows invite hash payloads with generation targets even when student ids are absent', () => {
+    const generationOnly = encodeInvite({
+      v: 1,
+      studentIds: [],
+      targets: [{ label: '이정원 (17기)', name: '이정원', identifier: '17기', identifierType: 'generation', generation: '17기' }],
+      message: '',
+      host: '',
+      displayName: '',
+      issuedAt: 1,
+    })
+    expect(readInviteFromLocation(`#invite=${encodeURIComponent(generationOnly)}`)).toMatchObject({
+      studentIds: [],
+      targets: [{ label: '이정원 (17기)', name: '이정원', identifierType: 'generation', generation: '17기' }],
+    })
   })
 
   it('exposes buildResponse helper without breaking inbox tests', () => {

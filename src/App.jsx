@@ -15,6 +15,7 @@ import WorkspaceNav from './components/WorkspaceNav'
 import { DEFAULT_ROLES, EMPTY_FAIRNESS, useWorkspaceData } from './hooks/useWorkspaceData'
 import { useInviteState } from './hooks/useInviteState'
 import { parseParticipantInput } from './utils/participants'
+import { isAdminUser } from './utils/roster'
 import { assignRoles, createTeams, decodeShareData, encodeShareData, resultToText, validateTeamConstraints } from './utils/teamUtils'
 
 const clone = (value) => structuredClone(value)
@@ -31,6 +32,7 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
   const [toast, setToast] = useState('')
   const [qr, setQr] = useState('')
   const notify = useCallback((text) => { setToast(text); window.setTimeout(() => setToast(''), 2400) }, [])
+  const isAdmin = isAdminUser(currentUser)
 
   const expectedTeams = useMemo(() => {
     const value = Number(settingValue)
@@ -137,8 +139,36 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
     notify(`${room.name} 방을 삭제했습니다.`)
   }
 
+  const topbar = <nav className="topbar"><BrandLogo href="#" /><div><span className="user-chip">{isAdmin ? `${workspace.label} · 개인 작업공간` : `${workspace.label} · 초대 전용`}</span><NotificationBell onInvite={addNotificationInvite} /><button className="icon-button" aria-label={theme === 'light' ? '다크 모드로 변경' : '라이트 모드로 변경'} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Moon size={16} aria-hidden="true" /> : <Sun size={16} aria-hidden="true" />}</button>{isAdmin && <button className="button ghost small" onClick={resetAll}>현재 방 초기화</button>}<button className="button ghost small" disabled={logoutPending} onClick={onLogout}>{logoutPending ? '로그아웃 중...' : '로그아웃'}</button></div></nav>
+
+  if (!isAdmin) {
+    return <div className="app-shell">
+      {topbar}
+      {logoutError && <div className="global-notice notice error" role="alert">{logoutError}</div>}
+      <header className="hero workspace-hero invite-only-hero">
+        <div>
+          <span className="hero-chip">INVITE ONLY</span>
+          <h1>초대 전용</h1>
+          <p>일반 회원은 도착한 초대를 확인하고, 필요한 사람에게 초대 링크나 COMS 알림을 보내는 기능만 사용할 수 있습니다.</p>
+        </div>
+        <div className="hero-actions">
+          <div className="hero-stats">
+            <div><strong>{inbox.length}</strong><span>받은 초대</span></div>
+            <div><strong>{sentInvites.length}</strong><span>보낸 초대</span></div>
+          </div>
+        </div>
+      </header>
+      <main className="invite-only-layout">
+        <InviteInboxSection invites={inbox} currentUser={currentUser} onRefresh={(next) => setInbox(next)} onJoin={joinInvite} onDismiss={dismissInvite} />
+        <InviteSection currentUser={currentUser} onNotify={notify} sentInvites={sentInvites} onRecordSentInvite={recordSentInvite} />
+      </main>
+      <footer>팀메이트 · 일반 회원은 초대 기능만 사용할 수 있습니다. · Made by 최준혁</footer>
+      {toast && <div className="toast">{toast}</div>}
+    </div>
+  }
+
   return <div className="app-shell">
-    <nav className="topbar"><BrandLogo href="#" /><div><span className="user-chip">{workspace.label} · 개인 작업공간</span><NotificationBell onInvite={addNotificationInvite} /><button className="icon-button" aria-label={theme === 'light' ? '다크 모드로 변경' : '라이트 모드로 변경'} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Moon size={16} aria-hidden="true" /> : <Sun size={16} aria-hidden="true" />}</button><button className="button ghost small" onClick={resetAll}>현재 방 초기화</button><button className="button ghost small" disabled={logoutPending} onClick={onLogout}>{logoutPending ? '로그아웃 중...' : '로그아웃'}</button></div></nav>
+    {topbar}
     <RoomSwitcher
       rooms={rooms}
       activeRoomId={activeRoomId}

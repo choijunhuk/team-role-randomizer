@@ -71,6 +71,8 @@ button { cursor: pointer; }
 main { max-width: 1180px; margin: auto; padding: 0 20px 80px; }
 .workspace-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 18px; align-items: start; }
 .workspace-content { min-width: 0; }
+.invite-only-layout { max-width: 980px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+.invite-only-hero .hero-stats { grid-template-columns: repeat(2, 1fr); }
 .workspace-nav { position: sticky; top: 12px; display: grid; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 18px; background: color-mix(in srgb, var(--panel) 88%, var(--panel-soft)); box-shadow: var(--shadow); }
 .workspace-nav-head { display: flex; align-items: center; gap: 8px; color: var(--primary); font-size: 12px; }
 .workspace-nav nav { display: grid; gap: 6px; }
@@ -261,6 +263,7 @@ footer { color: var(--muted); text-align: center; padding: 28px; font-size: 11px
   .hero-stats { margin-top: 28px; max-width: 400px; }
   .hero-actions { min-width: 0; margin-top: 18px; }
   .workspace-layout { grid-template-columns: 1fr; }
+  .invite-only-layout { grid-template-columns: 1fr; }
   .workspace-nav { position: static; }
   .workspace-nav nav { grid-template-columns: repeat(3, 1fr); }
   .setup-grid, .support-grid, .team-grid { grid-template-columns: 1fr 1fr; }
