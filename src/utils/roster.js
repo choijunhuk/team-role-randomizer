@@ -43,9 +43,56 @@ export function searchRoster(members, query) {
   ))
 }
 
+export function getRosterGenerationOptions(members) {
+  return [...new Set(members.map((member) => String(member.generation ?? '').trim()).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'ko-KR', { numeric: true }))
+}
+
+export function filterRoster(members, { query = '', generation = '' } = {}) {
+  const generationFilter = String(generation ?? '').trim()
+  const byGeneration = generationFilter
+    ? members.filter((member) => String(member.generation ?? '').trim() === generationFilter)
+    : members
+  return searchRoster(byGeneration, query)
+}
+
 export function dedupeAgainst(members, existingNames = []) {
   const taken = new Set(existingNames.map((name) => String(name).trim()))
   return members.filter((member) => !taken.has(String(member.name).trim()))
+}
+
+export function summarizeRoster(members, existingNames = []) {
+  const added = members.length - dedupeAgainst(members, existingNames).length
+  const counts = new Map()
+  members.forEach((member) => {
+    const generation = String(member.generation ?? '').trim() || '기수 미상'
+    counts.set(generation, (counts.get(generation) ?? 0) + 1)
+  })
+  const generations = [...counts.entries()]
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'ko-KR', { numeric: true }))
+  return {
+    total: members.length,
+    added,
+    available: members.length - added,
+    missingStudentId: members.filter((member) => !String(member.studentId ?? '').trim()).length,
+    generations,
+  }
+}
+
+const csvCell = (value) => {
+  const text = String(value ?? '')
+  return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
+}
+
+export function rosterToCsv(members) {
+  const rows = members.map((member) => [
+    member.name,
+    member.studentId,
+    member.generation,
+    member.admissionYear ?? '',
+  ].map(csvCell).join(','))
+  return ['name,studentId,generation,admissionYear', ...rows].join('\n')
 }
 
 export function isAdminUser(user) {

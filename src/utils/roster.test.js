@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ROSTER_ENDPOINT, dedupeAgainst, fetchRoster, isAdminUser, searchRoster } from './roster'
+import { ROSTER_ENDPOINT, dedupeAgainst, fetchRoster, filterRoster, getRosterGenerationOptions, isAdminUser, rosterToCsv, searchRoster, summarizeRoster } from './roster'
 
 describe('roster utilities', () => {
   it('fetches eligible members and normalizes fields', async () => {
@@ -87,5 +87,50 @@ describe('roster utilities', () => {
   it('treats the TeamMate owner student account as an admin', () => {
     expect(isAdminUser({ role: 'MEMBER', studentId: '2026402040' })).toBe(true)
     expect(isAdminUser({ role: 'MEMBER', studentId: ' 2026402040 ' })).toBe(true)
+  })
+
+  it('summarizes roster availability and generation counts for admin tools', () => {
+    const members = [
+      { id: '1', studentId: '20251234', name: '김민수', generation: '23기' },
+      { id: '2', studentId: '20240001', name: '이서연', generation: '22기' },
+      { id: '3', studentId: '', name: '졸업생', generation: '' },
+    ]
+
+    expect(summarizeRoster(members, ['이서연'])).toEqual({
+      total: 3,
+      added: 1,
+      available: 2,
+      missingStudentId: 1,
+      generations: [
+        { label: '22기', count: 1 },
+        { label: '23기', count: 1 },
+        { label: '기수 미상', count: 1 },
+      ],
+    })
+  })
+
+  it('filters roster by query and generation for bulk admin actions', () => {
+    const members = [
+      { id: '1', studentId: '20251234', name: '김민수', generation: '23기' },
+      { id: '2', studentId: '20240001', name: '이서연', generation: '22기' },
+      { id: '3', studentId: '20259999', name: '김도윤', generation: '22기' },
+    ]
+
+    expect(getRosterGenerationOptions(members)).toEqual(['22기', '23기'])
+    expect(filterRoster(members, { query: '김', generation: '22기' })).toEqual([members[2]])
+    expect(filterRoster(members, { query: '2025', generation: '' })).toEqual([members[0], members[2]])
+  })
+
+  it('exports roster rows as safe CSV', () => {
+    const members = [
+      { studentId: '20251234', name: '김,민수', generation: '23기', admissionYear: 2025 },
+      { studentId: '', name: '따옴표"학생', generation: '', admissionYear: null },
+    ]
+
+    expect(rosterToCsv(members)).toBe([
+      'name,studentId,generation,admissionYear',
+      '"김,민수",20251234,23기,2025',
+      '"따옴표""학생",,,',
+    ].join('\n'))
   })
 })

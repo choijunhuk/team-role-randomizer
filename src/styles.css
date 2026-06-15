@@ -258,8 +258,16 @@ footer { color: var(--muted); text-align: center; padding: 28px; font-size: 11px
 .roster-picker { margin-top: 14px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel-soft); display: flex; flex-direction: column; gap: 10px; }
 .roster-picker-head { display: flex; align-items: center; justify-content: space-between; }
 .roster-picker-head strong { font-size: 13px; }
+.roster-admin-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.roster-admin-summary span { min-width: 0; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--muted); font-size: 11px; font-weight: 700; }
+.roster-admin-summary strong { color: var(--text); }
+.roster-generation-strip { display: flex; gap: 6px; flex-wrap: wrap; }
+.roster-generation-strip span { padding: 5px 8px; border-radius: 999px; background: color-mix(in srgb, var(--primary) 9%, var(--panel)); color: var(--primary); font-size: 10px; font-weight: 800; }
+.roster-filter-row { display: grid; grid-template-columns: 1fr 130px; gap: 8px; align-items: stretch; }
 .roster-search { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
 .roster-search input { flex: 1; border: 0; background: transparent; outline: none; font-size: 14px; color: var(--text); }
+.roster-filter-row select { min-width: 0; padding: 8px 10px; border-radius: 10px; font-size: 12px; font-weight: 700; }
+.roster-admin-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .roster-suggestions { list-style: none; margin: 0; padding: 4px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); display: flex; flex-direction: column; gap: 2px; max-height: 240px; overflow-y: auto; }
 .roster-suggestion { width: 100%; display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 8px 10px; background: transparent; border: 0; border-radius: 8px; text-align: left; color: var(--text); cursor: pointer; }
 .roster-suggestion:hover, .roster-suggestion:focus-visible { background: var(--panel-soft); }
@@ -274,6 +282,12 @@ footer { color: var(--muted); text-align: center; padding: 28px; font-size: 11px
 .notice.small { padding: 6px 10px; font-size: 12px; }
 .button.small { padding: 6px 12px; font-size: 12px; }
 .empty-inline { color: var(--muted); font-size: 13px; }
+
+@media (max-width: 640px) {
+  .roster-admin-summary { grid-template-columns: 1fr 1fr; }
+  .roster-filter-row { grid-template-columns: 1fr; }
+  .roster-admin-actions .button { flex: 1; }
+}
 
 @media print {
   .topbar, .hero, .setup-grid, main > .panel:not(.result-section), .assign-banner, .result-toolbar, .section-actions, .team-card-header button, footer { display: none !important; }
