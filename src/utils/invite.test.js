@@ -7,6 +7,7 @@ import {
   fetchAllNotifications,
   fetchInviteInbox,
   findAmbiguousGenerationTargets,
+  formatAmbiguousInviteTargetMessage,
   inviteToken,
   markAllNotificationsRead,
   matchesStudentId,
@@ -49,6 +50,15 @@ describe('invite utilities', () => {
     ])
   })
 
+  it('treats bare numeric identifiers in parentheses as student ids, not generations', () => {
+    const result = parseInviteTargets('최준혁 (2026402040)')
+    expect(result.errors).toEqual([])
+    expect(result.studentIds).toEqual(['2026402040'])
+    expect(result.targets).toEqual([
+      { label: '최준혁 (2026402040)', name: '최준혁', identifier: '2026402040', identifierType: 'studentId', studentId: '2026402040' },
+    ])
+  })
+
   it('detects same-name same-generation invite targets from the roster', () => {
     const result = parseInviteTargets('이정원 (17기)')
     const ambiguous = findAmbiguousGenerationTargets(result.targets, [
@@ -57,6 +67,11 @@ describe('invite utilities', () => {
       { name: '이정원', generation: '18기', studentId: '20180001' },
     ])
     expect(ambiguous).toEqual([{ name: '이정원', generation: '17기', count: 2 }])
+  })
+
+  it('explains same-name same-generation ambiguity with the exact target label', () => {
+    expect(formatAmbiguousInviteTargetMessage({ name: '김민수', generation: '17기', count: 2 }))
+      .toBe('김민수 (17기)는 같은 이름/같은 기수 사람이 있을 수 있어서 COMS 계정을 특정할 수 없습니다. 학번으로 입력해주세요.')
   })
 
   it('round-trips invite payloads through encode/decode', () => {

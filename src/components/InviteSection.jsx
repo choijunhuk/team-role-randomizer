@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Section from './Section'
 import { useRoster } from '../hooks/useRoster'
-import { buildInviteUrl, findAmbiguousGenerationTargets, parseInviteTargets, postInviteNotification } from '../utils/invite'
+import { buildInviteUrl, findAmbiguousGenerationTargets, formatAmbiguousInviteTargetMessage, parseInviteTargets, postInviteNotification } from '../utils/invite'
 
 const STATUS_LABEL = {
   generated: '링크 생성',
@@ -32,7 +32,7 @@ export default function InviteSection({ currentUser, onNotify, sentInvites = [],
   const studentIds = parsedTargets.studentIds
   const generationOnlyCount = targets.filter((target) => target.identifierType === 'generation').length
   const targetError = parsedTargets.errors[0] || (ambiguousTargets.length
-    ? `${ambiguousTargets[0].name} (${ambiguousTargets[0].generation})와 같은 이름·같은 기수인 사람이 ${ambiguousTargets[0].count}명 있습니다. 학번으로 입력해주세요.`
+    ? formatAmbiguousInviteTargetMessage(ambiguousTargets[0])
     : '')
 
   const reset = () => { setRaw(''); setMessage(''); setInviteUrl(''); setNotice(null) }

@@ -144,6 +144,14 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
   if (!isAdmin) {
     return <div className="app-shell">
       {topbar}
+      <RoomSwitcher
+        rooms={rooms}
+        activeRoomId={activeRoomId}
+        participantCount={sentInvites.length}
+        onSelectRoom={selectWorkspaceRoom}
+        onCreateRoom={createWorkspaceRoom}
+        onDeleteRoom={deleteWorkspaceRoom}
+      />
       {logoutError && <div className="global-notice notice error" role="alert">{logoutError}</div>}
       <header className="hero workspace-hero invite-only-hero">
         <div>

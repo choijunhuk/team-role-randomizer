@@ -26,6 +26,8 @@ describe('App role-based workspace', () => {
     )
 
     expect(markup).toContain('초대 전용')
+    expect(markup).toContain('방 만들기')
+    expect(markup).toContain('새 방 이름')
     expect(markup).toContain('받은 초대')
     expect(markup).toContain('초대 대상')
     expect(markup).not.toContain('TEAM ROOM')

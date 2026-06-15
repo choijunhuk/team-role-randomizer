@@ -82,7 +82,7 @@ export function parseInviteTargets(raw) {
     if (wrapped) {
       const name = normalizeName(wrapped[1])
       const identifier = String(wrapped[2] ?? '').trim()
-      const generation = normalizeGeneration(identifier)
+      const generation = /기\s*$/.test(identifier) ? normalizeGeneration(identifier) : ''
       const target = generation
         ? normalizeInviteTarget({ name, identifierType: 'generation', generation })
         : normalizeInviteTarget({ name, identifierType: 'studentId', studentId: identifier })
@@ -127,6 +127,10 @@ export function findAmbiguousGenerationTargets(targets = [], rosterMembers = [])
       .filter(Boolean),
     (item) => `${item.name}::${item.generation}`,
   )
+}
+
+export function formatAmbiguousInviteTargetMessage(target) {
+  return `${target.name} (${target.generation})는 같은 이름/같은 기수 사람이 있을 수 있어서 COMS 계정을 특정할 수 없습니다. 학번으로 입력해주세요.`
 }
 
 export function encodeInvite(payload) {
