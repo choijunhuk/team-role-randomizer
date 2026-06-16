@@ -26,13 +26,16 @@ describe('App role-based workspace', () => {
     )
 
     expect(markup).toContain('받은 초대')
-    expect(markup).toContain('초대 대상')
+    expect(markup).toContain('방이 먼저 필요합니다')
+    expect(markup).toContain('방이 생긴 다음 초대할 수 있습니다')
     expect(markup).toContain('TEAM ROOM')
     expect(markup).toContain('초대만으로 참여할 수 있습니다')
     expect(markup).toContain('일반 회원 모드')
     expect(markup).not.toContain('방 만들기')
     expect(markup).not.toContain('새 방 이름')
     expect(markup).not.toContain('현재 방 초기화')
+    expect(markup).not.toContain('초대 대상')
+    expect(markup).not.toContain('초대 링크 만들기')
     expect(markup).not.toContain('랜덤 팀 배정하기')
     expect(markup).not.toContain('참가자 입력')
     expect(markup).not.toContain('팀 설정')
@@ -62,5 +65,20 @@ describe('App role-based workspace', () => {
     expect(markup).toContain('역할 설정')
     expect(markup).toContain('랜덤 팀 배정하기')
     expect(markup).toContain('명단')
+  })
+
+  it('tells admins to create a room before sending invites', () => {
+    const markup = renderToStaticMarkup(
+      <App
+        currentUser={{ role: 'ADMIN', studentId: '20250001', name: '관리자' }}
+        logoutError=""
+        logoutPending={false}
+        onLogout={() => {}}
+      />,
+    )
+
+    expect(markup).toContain('방 만들기')
+    expect(markup).toContain('초대하려면 먼저 방을 만들어주세요')
+    expect(markup).not.toContain('초대 링크 만들기')
   })
 })

@@ -18,7 +18,16 @@ const formatTime = (value) => {
   }
 }
 
-export default function InviteSection({ currentUser, onNotify, sentInvites = [], onRecordSentInvite, onDeleteSentInvite, showStep = true }) {
+export default function InviteSection({
+  currentUser,
+  onNotify,
+  sentInvites = [],
+  onRecordSentInvite,
+  onDeleteSentInvite,
+  showStep = true,
+  roomReady = true,
+  canCreateRoom = false,
+}) {
   const [raw, setRaw] = useState('')
   const [message, setMessage] = useState('')
   const [pending, setPending] = useState(false)
@@ -36,6 +45,26 @@ export default function InviteSection({ currentUser, onNotify, sentInvites = [],
     : '')
 
   const reset = () => { setRaw(''); setMessage(''); setInviteUrl(''); setNotice(null) }
+
+  if (!roomReady) {
+    return (
+      <Section
+        id="invites"
+        number="01·B"
+        title="방이 먼저 필요합니다"
+        description={canCreateRoom
+          ? '초대하려면 먼저 방을 만들어주세요. 방을 만든 뒤 초대 링크와 COMS 알림을 보낼 수 있습니다.'
+          : '받은 초대를 수락하면 방이 자동으로 만들어집니다. 방이 생긴 다음 초대할 수 있습니다.'}
+        showStep={showStep}
+      >
+        <div className="notice warning">
+          {canCreateRoom
+            ? '위쪽 방 관리에서 새 방 이름을 입력하고 방 만들기를 눌러주세요.'
+            : '아직 참여 중인 방이 없습니다. 받은 초대 알림을 새로고침하거나 초대 링크를 먼저 열어주세요.'}
+        </div>
+      </Section>
+    )
+  }
 
   const generate = () => {
     if (!targets.length) {

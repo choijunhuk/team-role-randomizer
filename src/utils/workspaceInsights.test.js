@@ -50,7 +50,7 @@ describe('workspaceInsights', () => {
     expect(getWorkspaceInsights({ ...base, isAdmin: true }).capabilityNote).toContain('명단')
   })
 
-  it('uses invite-only guidance for non-admin member workspaces', () => {
+  it('asks invite-only members to join a room before sending invites', () => {
     const insights = getWorkspaceInsights({
       ...base,
       roomName: '',
@@ -60,10 +60,22 @@ describe('workspaceInsights', () => {
       sentInviteCount: 2,
     })
 
-    expect(insights.status).toBe('invite-only')
-    expect(insights.nextAction).toContain('초대만으로 참여')
+    expect(insights.status).toBe('needs-room')
+    expect(insights.nextAction).toContain('방이 생긴 다음 초대')
     expect(insights.capabilityNote).toContain('초대')
     expect(insights.capabilityNote).not.toContain('팀 배정')
     expect(insights.stats.map((item) => item.label)).toEqual(['받은 초대', '보낸 초대', '초대 흐름'])
+  })
+
+  it('uses invite-only guidance after a non-admin member has a room', () => {
+    const insights = getWorkspaceInsights({
+      ...base,
+      inviteOnly: true,
+      inboxCount: 1,
+      sentInviteCount: 2,
+    })
+
+    expect(insights.status).toBe('invite-only')
+    expect(insights.nextAction).toContain('초대만으로 참여')
   })
 })

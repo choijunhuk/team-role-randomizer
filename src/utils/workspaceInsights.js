@@ -16,14 +16,19 @@ export function getWorkspaceInsights({
   const inviteTotal = (Number(inboxCount) || 0) + (Number(sentInviteCount) || 0)
 
   if (inviteOnly) {
+    const hasRoom = Boolean(roomName)
     return {
-      status: 'invite-only',
-      statusLabel: inviteTotal ? '초대 확인 중' : '초대 대기',
-      roomName: roomName || '초대 중심 작업공간',
-      nextAction: inviteTotal
-        ? '초대만으로 참여할 수 있습니다. 받은 초대를 확인하거나 필요한 사람에게 초대 링크를 보내세요.'
-        : '초대만으로 참여할 수 있습니다. 받은 초대를 새로고침하거나 초대 링크를 만들어 공유하세요.',
-      capabilityNote: '일반 회원 모드: 받은 초대 확인, 초대 링크 생성, COMS 알림 전송만 사용할 수 있습니다.',
+      status: hasRoom ? 'invite-only' : 'needs-room',
+      statusLabel: hasRoom ? inviteTotal ? '초대 확인 중' : '초대 대기' : '방 필요',
+      roomName: roomName || '방 없음',
+      nextAction: hasRoom
+        ? inviteTotal
+          ? '초대만으로 참여할 수 있습니다. 받은 초대를 확인하거나 필요한 사람에게 초대 링크를 보내세요.'
+          : '초대만으로 참여할 수 있습니다. 받은 초대를 새로고침하거나 초대 링크를 만들어 공유하세요.'
+        : '먼저 받은 초대를 수락해 방에 참여하세요. 방이 생긴 다음 초대할 수 있습니다.',
+      capabilityNote: hasRoom
+        ? '일반 회원 모드: 받은 초대 확인, 초대 링크 생성, COMS 알림 전송만 사용할 수 있습니다.'
+        : '일반 회원 모드: 받은 초대 확인은 가능하지만 방이 있어야 초대를 보낼 수 있습니다.',
       stats: [
         { label: '받은 초대', value: formatCount(inboxCount, '건') },
         { label: '보낸 초대', value: formatCount(sentInviteCount, '건') },

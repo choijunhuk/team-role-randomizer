@@ -36,6 +36,7 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
   const notify = useCallback((text) => { setToast(text); window.setTimeout(() => setToast(''), 2400) }, [])
   const showStepLabels = isAdminUser(currentUser)
   const inviteOnlyWorkspace = !showStepLabels
+  const roomReady = Boolean(workspace.room?.id)
 
   const expectedTeams = useMemo(() => {
     const value = Number(settingValue)
@@ -191,7 +192,7 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
         <WorkspaceCommandCenter insights={workspaceInsights} />
         <div className="support-grid invite-focus-grid">
           <InviteInboxSection invites={inbox} currentUser={currentUser} onRefresh={(next) => setInbox(next)} onJoin={joinInvite} onDismiss={dismissInvite} showStep={false} />
-          <InviteSection currentUser={currentUser} onNotify={notify} sentInvites={sentInvites} onRecordSentInvite={recordSentInvite} onDeleteSentInvite={deleteSentInvite} showStep={false} />
+          <InviteSection currentUser={currentUser} onNotify={notify} sentInvites={sentInvites} onRecordSentInvite={recordSentInvite} onDeleteSentInvite={deleteSentInvite} showStep={false} roomReady={roomReady} />
         </div>
       </main>
     ) : (
@@ -208,7 +209,7 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
           <div className="setup-grid"><ParticipantSection participants={participants} profiles={profiles} onProfiles={setProfiles} onAdd={addParticipants} onRemove={(name) => setParticipants(participants.filter((item) => item !== name))} onClear={() => setParticipants([])} message={message} currentUser={currentUser} showStep={showStepLabels} /><TeamSettings mode={mode} setMode={setMode} value={settingValue} setValue={setSettingValue} fairness={fairness} setFairness={setFairness} participants={participants} constraintReport={constraintReport} showStep={showStepLabels} /></div>
           <div className="support-grid">
             <InviteInboxSection invites={inbox} currentUser={currentUser} onRefresh={(next) => setInbox(next)} onJoin={joinInvite} onDismiss={dismissInvite} showStep={showStepLabels} />
-            <InviteSection currentUser={currentUser} onNotify={notify} sentInvites={sentInvites} onRecordSentInvite={recordSentInvite} onDeleteSentInvite={deleteSentInvite} showStep={showStepLabels} />
+            <InviteSection currentUser={currentUser} onNotify={notify} sentInvites={sentInvites} onRecordSentInvite={recordSentInvite} onDeleteSentInvite={deleteSentInvite} showStep={showStepLabels} roomReady={roomReady} canCreateRoom={showStepLabels} />
           </div>
           <RoleSection roles={roles} roleRules={roleRules} participants={participants} onRules={setRoleRules} onAdd={addRole} onRemove={(role) => setRoles(roles.filter((item) => item !== role))} showStep={showStepLabels} />
           <div className="assign-banner"><div><span>READY</span><strong>{participants.length}명을 {expectedTeams || 0}개 팀으로 배정합니다.</strong></div><button className="button primary large" onClick={assignTeams}>랜덤 팀 배정하기 <ArrowRight size={17} aria-hidden="true" /></button></div>
