@@ -8,11 +8,31 @@ export function getWorkspaceInsights({
   inboxCount,
   sentInviteCount,
   isAdmin,
+  inviteOnly = false,
   constraintReport,
 }) {
   const errors = constraintReport?.errors ?? []
   const warnings = constraintReport?.warnings ?? []
   const inviteTotal = (Number(inboxCount) || 0) + (Number(sentInviteCount) || 0)
+
+  if (inviteOnly) {
+    return {
+      status: 'invite-only',
+      statusLabel: inviteTotal ? '초대 확인 중' : '초대 대기',
+      roomName: roomName || '초대 중심 작업공간',
+      nextAction: inviteTotal
+        ? '초대만으로 참여할 수 있습니다. 받은 초대를 확인하거나 필요한 사람에게 초대 링크를 보내세요.'
+        : '초대만으로 참여할 수 있습니다. 받은 초대를 새로고침하거나 초대 링크를 만들어 공유하세요.',
+      capabilityNote: '일반 회원 모드: 받은 초대 확인, 초대 링크 생성, COMS 알림 전송만 사용할 수 있습니다.',
+      stats: [
+        { label: '받은 초대', value: formatCount(inboxCount, '건') },
+        { label: '보낸 초대', value: formatCount(sentInviteCount, '건') },
+        { label: '초대 흐름', value: formatCount(inviteTotal, '건') },
+      ],
+      blockers: [],
+      warnings: [],
+    }
+  }
 
   let status = 'ready'
   let statusLabel = '배정 준비 완료'
@@ -58,4 +78,3 @@ export function getWorkspaceInsights({
     warnings,
   }
 }
-

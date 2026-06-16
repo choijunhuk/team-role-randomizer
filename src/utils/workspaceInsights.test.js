@@ -49,5 +49,21 @@ describe('workspaceInsights', () => {
     expect(getWorkspaceInsights(base).capabilityNote).not.toContain('명단')
     expect(getWorkspaceInsights({ ...base, isAdmin: true }).capabilityNote).toContain('명단')
   })
-})
 
+  it('uses invite-only guidance for non-admin member workspaces', () => {
+    const insights = getWorkspaceInsights({
+      ...base,
+      roomName: '',
+      participantsCount: 0,
+      inviteOnly: true,
+      inboxCount: 1,
+      sentInviteCount: 2,
+    })
+
+    expect(insights.status).toBe('invite-only')
+    expect(insights.nextAction).toContain('초대만으로 참여')
+    expect(insights.capabilityNote).toContain('초대')
+    expect(insights.capabilityNote).not.toContain('팀 배정')
+    expect(insights.stats.map((item) => item.label)).toEqual(['받은 초대', '보낸 초대', '초대 흐름'])
+  })
+})
