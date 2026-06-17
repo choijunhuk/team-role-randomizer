@@ -8,6 +8,7 @@ import ResultSection from './components/ResultSection'
 import HistorySection from './components/HistorySection'
 import InviteSection from './components/InviteSection'
 import InviteInboxSection from './components/InviteInboxSection'
+import Section from './components/Section'
 import NotificationBell from './components/NotificationBell'
 import BrandLogo from './components/BrandLogo'
 import RoomSwitcher from './components/RoomSwitcher'
@@ -215,7 +216,7 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
         <h1>{workspace.room?.name ?? '새 방을 만들거나 초대를 수락하세요'}</h1>
         <p>{showStepLabels ? '명단에서 참가자를 고르거나 직접 입력한 뒤 팀 기준을 정하면 바로 배정할 수 있습니다.' : '초대만으로 참여할 수 있습니다. 받은 초대를 확인하거나 필요한 사람에게 초대 링크를 보내세요.'}</p>
       </div>
-      {showStepLabels ? <div className="hero-actions">
+      {showStepLabels ? (roomReady ? <div className="hero-actions">
         <div className="hero-stats">
           <div><strong>{participants.length}</strong><span>참가자</span></div>
           <div><strong>{expectedTeams || 0}</strong><span>예상 팀</span></div>
@@ -224,7 +225,7 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
         <button className="button primary large" onClick={assignTeams}>
           랜덤 팀 배정하기 <ArrowRight size={17} aria-hidden="true" />
         </button>
-      </div> : <div className="hero-actions member-invite-summary"><div className="hero-stats invite-stats"><div><strong>{inbox.length}</strong><span>받은 초대</span></div><div><strong>{sentInvites.length}</strong><span>보낸 초대</span></div></div></div>}
+      </div> : <div className="hero-actions member-invite-summary"><div className="hero-stats invite-stats"><div><strong>{rooms.length}</strong><span>방</span></div><div><strong>{inbox.length}</strong><span>받은 초대</span></div></div></div>) : <div className="hero-actions member-invite-summary"><div className="hero-stats invite-stats"><div><strong>{inbox.length}</strong><span>받은 초대</span></div><div><strong>{sentInvites.length}</strong><span>보낸 초대</span></div></div></div>}
     </header>
     {inviteOnlyWorkspace ? (
       <main className="member-invite-layout">
@@ -232,6 +233,16 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
         <div className="support-grid invite-focus-grid">
           <InviteInboxSection invites={inbox} currentUser={currentUser} onRefresh={(next) => setInbox(next)} onJoin={joinInvite} onDismiss={dismissInvite} showStep={false} />
           <InviteSection currentUser={currentUser} onNotify={notify} sentInvites={sentInvites} onRecordSentInvite={recordSentInvite} onDeleteSentInvite={deleteSentInvite} showStep={false} roomReady={roomReady} />
+        </div>
+      </main>
+    ) : !roomReady ? (
+      <main className="member-invite-layout">
+        <WorkspaceCommandCenter insights={workspaceInsights} />
+        <div className="support-grid invite-focus-grid">
+          <Section id="no-room" number="01" title="먼저 방을 만들어주세요" description="참가자 추가·팀 구성·역할 배정 도구는 방을 만든 뒤에 열립니다. 위쪽 방 관리에서 새 방을 만들거나, 받은 초대를 수락하면 방이 자동으로 생깁니다." showStep={showStepLabels}>
+            <div className="notice warning">위쪽 <strong>방 관리</strong>에서 새 방 이름을 입력하고 <strong>방 만들기</strong>를 누르면 모든 도구가 열립니다.</div>
+          </Section>
+          <InviteInboxSection invites={inbox} currentUser={currentUser} onRefresh={(next) => setInbox(next)} onJoin={joinInvite} onDismiss={dismissInvite} showStep={showStepLabels} />
         </div>
       </main>
     ) : (
