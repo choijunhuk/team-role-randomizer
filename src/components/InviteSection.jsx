@@ -9,6 +9,15 @@ const STATUS_LABEL = {
   failed: '전송 실패',
 }
 
+const FAILURE_REASON_LABEL = {
+  unauthorized: '로그인이 만료되어 COMS 알림함에 보내지 못했습니다.',
+  'endpoint-missing': 'COMS 알림함 API를 찾지 못했습니다.',
+  'request-failed': 'COMS 알림함 요청이 실패했습니다.',
+  network: '네트워크 문제로 COMS 알림함에 보내지 못했습니다.',
+}
+
+const failureReasonText = (reason) => FAILURE_REASON_LABEL[reason] || 'COMS 알림함에 보내지 못했습니다.'
+
 const formatTime = (value) => {
   if (!value) return ''
   try {
@@ -202,7 +211,9 @@ export default function InviteSection({
               <p>{invite.message || '메시지 없음'}</p>
               {invite.targets?.length > 0 && <small>{invite.targets.slice(0, 3).map((target) => target.label).join(', ')}{invite.targets.length > 3 ? ` 외 ${invite.targets.length - 3}명` : ''}</small>}
               {invite.status === 'sent' && <small>성공 {invite.accepted}명 · 미등록 {invite.unknown.length}명 · 거절 {invite.rejected}건</small>}
-              {invite.status === 'failed' && <small>링크는 그대로 사용할 수 있습니다.</small>}
+              {invite.status === 'failed' && (
+                <small>{failureReasonText(invite.reason)} 초대 링크는 그대로 사용할 수 있습니다.</small>
+              )}
               {onDeleteSentInvite && (
                 <button className="text-button danger sent-invite-delete" onClick={() => onDeleteSentInvite(invite)} aria-label="보낸 초대 삭제">
                   삭제
