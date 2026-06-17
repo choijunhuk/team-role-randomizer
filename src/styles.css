@@ -371,8 +371,218 @@ footer { color: var(--muted); text-align: center; padding: 28px; font-size: 11px
   .roster-admin-actions .button { flex: 1; }
 }
 
+/* --- Mobile affordances: base (desktop hides these) --- */
+.bell-backdrop { display: none; }
+.mobile-action-bar { display: none; }
+
+/* ======================================================================
+   MOBILE-FIRST REFINEMENTS (phones, 360-430px). Additive only.
+   Reuses existing tokens; never alters desktop layout above 640px.
+   ====================================================================== */
+@media (max-width: 640px) {
+  /* iOS auto-zoom guard: every text-entry control >= 16px on phones */
+  textarea, input, select,
+  .roster-search input,
+  .room-create input,
+  .pair-inputs select,
+  .role-rule select,
+  .role-select,
+  .member-name-input,
+  .team-name-input,
+  .profile-fields input,
+  .fixed-list input,
+  .field input,
+  .invite-message,
+  .roster-filter-row select { font-size: 16px; }
+
+  /* Comfortable tap height for all primary interactive controls */
+  .button { min-height: 44px; padding: 11px 16px; }
+  .button.small { min-height: 40px; padding: 9px 13px; font-size: 13px; }
+  .button.large { min-height: 52px; }
+  .icon-button { min-width: 44px; height: 44px; }
+  .text-button { min-height: 40px; padding: 8px 6px; }
+  .text-button.sent-invite-delete { min-height: 36px; }
+
+  /* Sticky, compact topbar so nav never eats scroll space */
+  .topbar {
+    position: sticky; top: 0; z-index: 40; height: 56px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: saturate(1.4) blur(10px);
+    -webkit-backdrop-filter: saturate(1.4) blur(10px);
+    border-bottom: 1px solid var(--line); padding: 0 14px;
+  }
+  .topbar > div { gap: 6px; }
+  /* keep header tidy: hide secondary text actions, keep icons + logout */
+  .topbar .button.ghost.small { padding: 9px 12px; }
+
+  /* Hero: tighter, action stacks full-width */
+  .workspace-hero { display: block; margin-bottom: 18px; }
+  .workspace-hero h1 { font-size: 26px; line-height: 1.18; }
+  .hero-actions { margin-top: 16px; gap: 12px; }
+  .hero-stats { max-width: none; }
+
+  /* Room switcher -> clean stacked card; tabs scroll horizontally */
+  .room-switcher { padding: 12px; gap: 12px; border-radius: 16px; }
+  .room-current { border-right: 0; border-bottom: 1px solid var(--line); padding: 0 0 10px; }
+  .room-tabs { -webkit-overflow-scrolling: touch; padding: 4px; }
+  .room-tabs button { min-height: 40px; padding: 10px 14px; }
+
+  /* Command center: 2-col stat grid, generous touch */
+  .command-stats { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .command-status { padding: 12px 14px; }
+
+  /* Workspace nav becomes a horizontal scroll strip of large chips */
+  .workspace-nav { padding: 10px; border-radius: 14px; }
+  .workspace-nav nav { display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+  .workspace-nav a { flex: 0 0 auto; min-width: 132px; min-height: 56px; padding: 10px 12px; }
+  .workspace-nav a em { display: inline-block; }
+
+  /* Forms stack full-width; no cramped multi-column on phones */
+  .input-row { grid-template-columns: 1fr; gap: 12px; }
+  .input-row .button { width: 100%; }
+  .compact-input { display: grid; grid-template-columns: 1fr; }
+  .profile-fields { grid-template-columns: 1fr; gap: 9px; }
+  .profile-fields input { padding: 12px 13px; }
+  .role-rule { grid-template-columns: 1fr; gap: 9px; }
+  .pair-inputs { grid-template-columns: 1fr; }
+  .pair-inputs button { grid-column: auto; }
+  .pair-inputs select { padding: 12px; }
+  .preset-grid { grid-template-columns: 1fr; }
+  .preset-grid button { min-height: 56px; }
+  .fairness-grid { grid-template-columns: 1fr; }
+  .check-row { gap: 10px 16px; }
+  .check-row label { min-height: 40px; display: inline-flex; align-items: center; }
+
+  /* Numeric setting fields shouldn't be pinned narrow -> overflow-safe */
+  .field { flex-wrap: wrap; gap: 8px 12px; }
+  .field input { width: 96px; min-height: 44px; }
+  .fixed-list label { gap: 8px; min-height: 44px; }
+  .fixed-list label span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fixed-list input { width: 88px; min-height: 40px; }
+
+  /* Participant rows: keep delete reachable, badges wrap, no clip */
+  .participant-row { gap: 10px; padding: 12px; }
+  .participant-name { min-height: 40px; }
+  .participant-title { gap: 6px; }
+  .participant-name small { white-space: nowrap; }
+
+  /* Tag chips: larger close targets */
+  .tag { padding: 9px 10px 9px 13px; }
+  .tag button, .mini-tags button { width: 24px; height: 24px; }
+  .mini-tags span { padding: 7px 9px; font-size: 11px; }
+
+  /* Roster picker: stack filters, summary 2-col, scrollable lists */
+  .roster-picker { padding: 12px; }
+  .roster-admin-summary { grid-template-columns: 1fr 1fr; }
+  .roster-admin-summary button { min-height: 44px; }
+  .roster-filter-row { grid-template-columns: 1fr; }
+  .roster-filter-row select { min-height: 44px; }
+  .roster-search { padding: 11px 12px; }
+  .roster-admin-actions { gap: 8px; }
+  .roster-admin-actions .button { flex: 1 1 auto; }
+  .roster-admin-actions .muted { flex-basis: 100%; }
+  .roster-grid { grid-template-columns: 1fr; max-height: 60vh; }
+  .roster-suggestions { max-height: 50vh; }
+  .roster-suggestion { min-height: 44px; }
+  .roster-grid .checkbox-row { min-height: 44px; padding: 4px 2px; }
+  .checkbox-row input[type="checkbox"] { width: 22px; height: 22px; }
+  .roster-toggle { min-height: 44px; }
+
+  /* Invite cards / sent invites: full-width buttons, wrap actions */
+  .invite-card footer { flex-wrap: wrap; }
+  .invite-card footer .button,
+  .invite-card footer a.button { flex: 1 1 auto; }
+  .invite-link { overflow-x: auto; }
+  .invite-link code { word-break: break-all; }
+  .invite-actions .button { flex: 1 1 auto; }
+  .sent-invite-item { padding: 12px; }
+
+  /* Assign banner stacks, button full-width */
+  .assign-banner { display: grid; gap: 14px; padding: 18px 18px 20px; border-radius: 18px; }
+  .assign-banner .button { width: 100%; }
+
+  /* Result toolbar: wrap into a comfortable two-up grid */
+  .result-toolbar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .result-toolbar .button { width: 100%; }
+  .fairness-scoreboard { grid-template-columns: 1fr 1fr; }
+
+  /* Team cards: single column, roomy member rows, big move buttons */
+  .team-grid { grid-template-columns: 1fr; }
+  .team-card li {
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas: 'avatar name move' 'avatar role move';
+    column-gap: 10px; row-gap: 4px; padding: 12px 4px;
+  }
+  .team-card li .avatar { grid-area: avatar; align-self: center; width: 34px; height: 34px; }
+  .team-card li .member-name-input { grid-area: name; align-self: center; }
+  .team-card li .role-select { grid-area: role; }
+  .team-card li .move-buttons { grid-area: move; align-self: center; }
+  .team-name-input { width: auto; max-width: 60vw; }
+  .move-buttons { gap: 6px; }
+  .move-buttons button { min-width: 40px; min-height: 40px; padding: 0; display: grid; place-items: center; }
+
+  /* History rows: stack content above actions, full-width tap targets */
+  .history-item { flex-direction: column; align-items: stretch; gap: 12px; }
+  .history-item div:last-child { justify-content: space-between; }
+  .history-item div:last-child .text-button { flex: 1; justify-content: center; }
+  .history-item .file-button { flex: 1; justify-content: center; }
+
+  /* NotificationBell -> bottom sheet, thumb-dismissable */
+  .bell-backdrop {
+    display: block; position: fixed; inset: 0; z-index: 55;
+    border: 0; padding: 0; background: rgba(10, 10, 20, 0.45);
+  }
+  .bell-panel {
+    position: fixed; top: auto; right: 0; left: 0; bottom: 0;
+    width: 100%; max-width: none; max-height: 78vh;
+    border-radius: 20px 20px 0 0; padding: 14px 16px calc(16px + env(safe-area-inset-bottom));
+    z-index: 56; box-shadow: 0 -16px 40px rgba(0, 0, 0, 0.28);
+    animation: sheet-up 0.22s ease;
+  }
+  .bell-panel header strong { font-size: 16px; }
+  .bell-item { padding: 13px 14px; }
+  .bell-list { gap: 8px; }
+  @keyframes sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+  /* Modal QR: roomy close target, safe-area padding */
+  .modal { padding: 16px; align-items: end; }
+  .modal > div { border-radius: 22px 22px 18px 18px; padding: 22px 20px calc(22px + env(safe-area-inset-bottom)); }
+  .modal-close { width: 40px; height: 40px; right: 14px; top: 14px; }
+
+  /* Sticky bottom action bar for the primary action (admin only) */
+  .mobile-action-bar {
+    display: block; position: sticky; bottom: 0; z-index: 35;
+    margin: 0 -12px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    background: color-mix(in srgb, var(--bg) 90%, transparent);
+    backdrop-filter: saturate(1.4) blur(10px);
+    -webkit-backdrop-filter: saturate(1.4) blur(10px);
+    border-top: 1px solid var(--line);
+  }
+  .mobile-action-bar .button { width: 100%; min-height: 50px; font-size: 15px; box-shadow: var(--shadow); }
+  /* give content clearance so the bar never overlaps the footer text */
+  footer { padding-bottom: 18px; }
+
+  /* Toast sits above the action bar */
+  .toast { bottom: calc(86px + env(safe-area-inset-bottom)); }
+
+  /* Auth/login screen breathes on small screens */
+  .auth-card { padding: 26px 22px; gap: 22px; border-radius: 22px; }
+  .auth-card h1 { font-size: 30px; }
+  .auth-card form .button { min-height: 50px; }
+
+  /* Global notice wraps its action instead of overflowing */
+  .global-notice.warning { flex-wrap: wrap; }
+}
+
+/* Tablet / coarse-pointer touch comfort without changing layout */
+@media (min-width: 641px) and (max-width: 900px) and (pointer: coarse) {
+  .button.small { min-height: 40px; }
+  .move-buttons button { min-width: 36px; min-height: 36px; }
+  .workspace-nav a { min-height: 52px; }
+}
+
 @media print {
-  .topbar, .hero, .setup-grid, main > .panel:not(.result-section), .assign-banner, .result-toolbar, .section-actions, .team-card-header button, footer { display: none !important; }
+  .topbar, .hero, .setup-grid, main > .panel:not(.result-section), .assign-banner, .result-toolbar, .section-actions, .team-card-header button, footer, .mobile-action-bar, .bell-backdrop, .bell-panel { display: none !important; }
   body, .panel, .team-card { background: white; color: black; box-shadow: none; }
   main { max-width: none; padding: 0; }
   .result-section { border: 0; }

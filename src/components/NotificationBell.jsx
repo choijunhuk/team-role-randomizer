@@ -83,6 +83,8 @@ export default function NotificationBell({ onInvite }) {
         {unread > 0 && <span className="bell-badge">{unread > 99 ? '99+' : unread}</span>}
       </button>
       {open && (
+        <>
+        <button type="button" className="bell-backdrop" aria-label="알림 닫기" onClick={() => setOpen(false)} />
         <div className="bell-panel">
           <header>
             <strong>알림</strong>
@@ -110,6 +112,7 @@ export default function NotificationBell({ onInvite }) {
             ))}
           </ul>
         </div>
+        </>
       )}
     </div>
   )

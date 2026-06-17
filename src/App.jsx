@@ -219,6 +219,13 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
       </main>
     )}
     <footer>팀메이트 · 데이터는 이 브라우저의 {workspace.label}에 저장되며 서버에 동기화되지 않습니다. · Made by 최준혁</footer>
+    {showStepLabels && roomReady && (
+      <div className="mobile-action-bar">
+        <button className="button primary" onClick={assignTeams}>
+          {participants.length}명 · {expectedTeams || 0}팀 랜덤 배정 <ArrowRight size={17} aria-hidden="true" />
+        </button>
+      </div>
+    )}
     {toast && <div className="toast">{toast}</div>}
     {qr && <div className="modal" onClick={() => setQr('')}><div onClick={(e) => e.stopPropagation()}><button className="modal-close" aria-label="QR 모달 닫기" onClick={() => setQr('')}><X size={16} aria-hidden="true" /></button><h3>결과 공유 QR</h3><img src={qr} alt="공유 링크 QR 코드" /><p>스캔하면 현재 배정 결과를 확인할 수 있습니다.</p></div></div>}
   </div>
