@@ -1,7 +1,8 @@
-import { ChevronLeft, ChevronRight, Copy, Download, Lock, Printer, QrCode, Share2, Shuffle, Sparkles, Undo2, Unlock, UserRoundCheck } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ClipboardCheck, Copy, Download, Lock, Mic2, Printer, QrCode, Share2, Shuffle, Sparkles, TriangleAlert, Undo2, Unlock, UserRoundCheck } from 'lucide-react'
 import Section from './Section'
 import { useState } from 'react'
 import { teamAccent } from '../utils/teamComposition'
+import { buildPresentationQueue, getUnassignedRoleMembers, resultToChecklistText } from '../utils/workflowSummaries'
 
 const fairnessItems = (evaluation) => {
   if (!evaluation?.breakdown) return []
@@ -84,6 +85,16 @@ export default function ResultSection({ teams, roles, evaluation, composition, l
     onChange(teams.map((team) => team.id === sourceId ? { ...team, members: team.members.filter((item) => item.name !== name) } : team.id === targetId ? { ...team, members: [...team.members, member] } : team))
   }
   const lockedCount = lockedTeamIds.length
+  const presentationQueue = buildPresentationQueue(teams)
+  const unassignedMembers = getUnassignedRoleMembers(teams)
+  const copyChecklist = async () => {
+    const text = resultToChecklistText(teams)
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      window.prompt('아래 체크리스트를 직접 복사하세요.', text)
+    }
+  }
 
   return <Section id="assignment" number="04" title="배정 결과" description="드래그하거나 화살표로 팀을 옮기고 이름과 역할을 직접 수정할 수 있습니다. 키보드: R 다시 배정 · E 미잠금만 · A 역할 · Z 취소 · C 복사" className="result-section" showStep={showStep} actions={teams.length > 0 && <button className="button ghost small" onClick={onReroll}><Shuffle size={14} aria-hidden="true" />팀 다시 배정</button>}>
     {teams.length === 0 ? <div className="empty-state"><span><Sparkles size={30} aria-hidden="true" /></span><strong>아직 배정 결과가 없습니다.</strong><p>참가자와 팀 설정을 확인한 뒤 팀을 만들어보세요.</p></div> : <>
@@ -94,6 +105,37 @@ export default function ResultSection({ teams, roles, evaluation, composition, l
       {evaluation?.details?.repeatedPairs?.length > 0 && <div className="fairness-detail"><strong>반복 조합</strong>{evaluation.details.repeatedPairs.slice(0, 5).map((item) => <span key={item.pair.join('|')}>{item.pair.join(' · ')} {item.count}회</span>)}</div>}
       {composition?.fields?.length > 0 && <BalancePanel composition={composition} />}
       <div className="result-toolbar"><button className="button primary" onClick={onAssignAll}><UserRoundCheck size={16} aria-hidden="true" />전체 역할 배정</button>{onRerollUnlocked && <button className="button ghost" disabled={lockedCount === 0 || lockedCount >= teams.length} onClick={onRerollUnlocked}><Shuffle size={16} aria-hidden="true" />미잠금 팀만 다시</button>}<button className="button ghost" disabled={!canUndo} onClick={onUndo}><Undo2 size={16} aria-hidden="true" />실행 취소</button><button className="button contrast" onClick={onCopy}><Copy size={16} aria-hidden="true" />결과 복사</button><button className="button ghost" onClick={onShare}><Share2 size={16} aria-hidden="true" />공유 링크</button><button className="button ghost" onClick={onQr}><QrCode size={16} aria-hidden="true" />QR 보기</button><button className="button ghost" onClick={onDownload}><Download size={16} aria-hidden="true" />TXT</button><button className="button ghost" onClick={() => window.print()}><Printer size={16} aria-hidden="true" />인쇄</button></div>
+      <div className="result-ops-panel" aria-label="회의 운영">
+        <div className="mini-panel-head">
+          <strong><ClipboardCheck size={15} aria-hidden="true" />회의 운영</strong>
+          <span>배정 직후 진행자가 확인할 항목입니다.</span>
+        </div>
+        <div className="result-ops-grid">
+          <div className="result-op-card">
+            <strong><Mic2 size={15} aria-hidden="true" />발표 순서</strong>
+            <ol>
+              {presentationQueue.slice(0, 6).map((item) => (
+                <li key={`${item.order}-${item.teamName}-${item.memberName}`}>
+                  <span>{item.order}</span>{item.teamName} · {item.memberName} · {item.role}
+                </li>
+              ))}
+            </ol>
+          </div>
+          <div className="result-op-card">
+            <strong><TriangleAlert size={15} aria-hidden="true" />역할 미배정</strong>
+            {unassignedMembers.length ? (
+              <div className="mini-tags">
+                {unassignedMembers.slice(0, 8).map((item) => <span key={`${item.teamName}-${item.memberName}`}>{item.teamName} · {item.memberName}</span>)}
+              </div>
+            ) : <p>모든 참가자에게 역할이 있습니다.</p>}
+          </div>
+          <div className="result-op-card">
+            <strong>진행 체크리스트</strong>
+            <p>참석, 역할, 팀별 진행 확인용 체크리스트를 복사합니다.</p>
+            <button type="button" className="button ghost small" onClick={copyChecklist}>체크리스트 복사</button>
+          </div>
+        </div>
+      </div>
       <div className="team-grid" key={revealKey}>{teams.map((team, index) => {
         const accent = teamAccent(index)
         const isLocked = lockedTeamIds.includes(team.id)

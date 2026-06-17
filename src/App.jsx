@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowRight, Moon, Sun, X } from 'lucide-react'
 import QRCode from 'qrcode'
 import ParticipantSection from './components/ParticipantSection'
+import QuickStartPanel from './components/QuickStartPanel'
 import TeamSettings from './components/TeamSettings'
 import RoleSection from './components/RoleSection'
 import ResultSection from './components/ResultSection'
@@ -14,19 +15,23 @@ import BrandLogo from './components/BrandLogo'
 import RoomSwitcher from './components/RoomSwitcher'
 import WorkspaceNav from './components/WorkspaceNav'
 import WorkspaceCommandCenter from './components/WorkspaceCommandCenter'
+import InviteProgressBoard from './components/InviteProgressBoard'
+import SharedRoomPanel from './components/SharedRoomPanel'
 import { DEFAULT_ROLES, EMPTY_FAIRNESS, useWorkspaceData } from './hooks/useWorkspaceData'
 import { useInviteState } from './hooks/useInviteState'
+import { EXAMPLES } from './components/ParticipantSection'
 import { parseParticipantInput } from './utils/participants'
 import { isAdminUser } from './utils/roster'
 import { assignRoles, balancedBuckets, createTeams, decodeShareData, encodeShareData, resultToText, validateTeamConstraints } from './utils/teamUtils'
 import { getWorkspaceInsights } from './utils/workspaceInsights'
 import { getTeamComposition, rerollUnlockedTeams } from './utils/teamComposition'
+import { getInviteProgress } from './utils/workflowSummaries'
 
 const clone = (value) => structuredClone(value)
 
 export default function App({ currentUser, logoutError, logoutPending, onLogout }) {
   const workspaceData = useWorkspaceData(currentUser)
-  const { rooms, activeRoomId, workspace, participants, setParticipants, profiles, setProfiles, roles, setRoles, roleRules, setRoleRules, histories, setHistories, fairness, setFairness, theme, setTheme, legacyDataAvailable, importLegacyWorkspace, resetWorkspace, createRoom, createInviteRoom, setActiveRoomId, removeRoom } = workspaceData
+  const { rooms, activeRoomId, activeRoom, workspace, participants, setParticipants, profiles, setProfiles, roles, setRoles, roleRules, setRoleRules, histories, setHistories, fairness, setFairness, theme, setTheme, legacyDataAvailable, importLegacyWorkspace, resetWorkspace, createRoom, createInviteRoom, applyRoomSnapshot, setActiveRoomId, removeRoom } = workspaceData
   const [mode, setMode] = useState('count')
   const [settingValue, setSettingValue] = useState('2')
   const [teams, setTeams] = useState([])
@@ -59,6 +64,7 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
     inviteOnly: inviteOnlyWorkspace,
     constraintReport,
   }), [workspace.room?.name, participants.length, expectedTeams, roles.length, inbox.length, sentInvites.length, showStepLabels, inviteOnlyWorkspace, constraintReport])
+  const inviteProgress = useMemo(() => getInviteProgress(sentInvites, inbox), [sentInvites, inbox])
 
   useEffect(() => {
     const hash = new URLSearchParams(location.hash.slice(1)).get('share')
@@ -159,6 +165,14 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
     notify(`${room.name} 방을 만들었습니다.`)
     return true
   }
+  const addCurrentUserParticipant = () => {
+    const label = currentUser?.name
+      ? currentUser.studentId ? `${currentUser.name} (${currentUser.studentId})` : currentUser.name
+      : ''
+    if (!label) return notify('COMS 사용자 이름을 확인할 수 없습니다.')
+    addParticipants(label)
+  }
+  const addSampleParticipants = () => addParticipants(EXAMPLES.join('\n'))
   const selectWorkspaceRoom = (roomId) => {
     setActiveRoomId(roomId)
     const room = rooms.find((item) => item.id === roomId)
@@ -230,6 +244,7 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
     {inviteOnlyWorkspace ? (
       <main className="member-invite-layout">
         <WorkspaceCommandCenter insights={workspaceInsights} />
+        <InviteProgressBoard progress={inviteProgress} />
         <div className="support-grid invite-focus-grid">
           <InviteInboxSection invites={inbox} currentUser={currentUser} onRefresh={(next) => setInbox(next)} onJoin={joinInvite} onDismiss={dismissInvite} showStep={false} />
           <InviteSection currentUser={currentUser} onNotify={notify} sentInvites={sentInvites} onRecordSentInvite={recordSentInvite} onDeleteSentInvite={deleteSentInvite} showStep={false} roomReady={roomReady} />
@@ -241,6 +256,13 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
         <div className="support-grid invite-focus-grid">
           <Section id="no-room" number="01" title="먼저 방을 만들어주세요" description="참가자 추가·팀 구성·역할 배정 도구는 방을 만든 뒤에 열립니다. 위쪽 방 관리에서 새 방을 만들거나, 받은 초대를 수락하면 방이 자동으로 생깁니다." showStep={showStepLabels}>
             <div className="notice warning">위쪽 <strong>방 관리</strong>에서 새 방 이름을 입력하고 <strong>방 만들기</strong>를 누르면 모든 도구가 열립니다.</div>
+            <QuickStartPanel
+              roomReady={false}
+              currentUser={currentUser}
+              onCreateRoom={createWorkspaceRoom}
+              onAddCurrentUser={addCurrentUserParticipant}
+              onAddSampleParticipants={addSampleParticipants}
+            />
           </Section>
           <InviteInboxSection invites={inbox} currentUser={currentUser} onRefresh={(next) => setInbox(next)} onJoin={joinInvite} onDismiss={dismissInvite} showStep={showStepLabels} />
         </div>
@@ -256,11 +278,34 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
         />
         <div className="workspace-content">
           <WorkspaceCommandCenter insights={workspaceInsights} />
+          <SharedRoomPanel
+            roomReady={roomReady}
+            room={activeRoom}
+            currentUser={currentUser}
+            participants={participants}
+            profiles={profiles}
+            roles={roles}
+            roleRules={roleRules}
+            fairness={fairness}
+            histories={histories}
+            onApplySnapshot={applyRoomSnapshot}
+            onNotify={notify}
+          />
+          {participants.length < 2 && (
+            <QuickStartPanel
+              roomReady
+              currentUser={currentUser}
+              onCreateRoom={createWorkspaceRoom}
+              onAddCurrentUser={addCurrentUserParticipant}
+              onAddSampleParticipants={addSampleParticipants}
+            />
+          )}
           <div className="setup-grid"><ParticipantSection participants={participants} profiles={profiles} onProfiles={setProfiles} onAdd={addParticipants} onRemove={(name) => setParticipants(participants.filter((item) => item !== name))} onClear={() => setParticipants([])} message={message} currentUser={currentUser} showStep={showStepLabels} /><TeamSettings mode={mode} setMode={setMode} value={settingValue} setValue={setSettingValue} fairness={fairness} setFairness={setFairness} participants={participants} constraintReport={constraintReport} showStep={showStepLabels} /></div>
           <div className="support-grid">
             <InviteInboxSection invites={inbox} currentUser={currentUser} onRefresh={(next) => setInbox(next)} onJoin={joinInvite} onDismiss={dismissInvite} showStep={showStepLabels} />
             <InviteSection currentUser={currentUser} onNotify={notify} sentInvites={sentInvites} onRecordSentInvite={recordSentInvite} onDeleteSentInvite={deleteSentInvite} showStep={showStepLabels} roomReady={roomReady} canCreateRoom={showStepLabels} />
           </div>
+          <InviteProgressBoard progress={inviteProgress} />
           <RoleSection roles={roles} roleRules={roleRules} participants={participants} onRules={setRoleRules} onAdd={addRole} onRemove={(role) => setRoles(roles.filter((item) => item !== role))} showStep={showStepLabels} />
           <div className="assign-banner"><div><span>READY</span><strong>{participants.length}명을 {expectedTeams || 0}개 팀으로 배정합니다.</strong></div><button className="button primary large" onClick={assignTeams}>랜덤 팀 배정하기 <ArrowRight size={17} aria-hidden="true" /></button></div>
           <ResultSection teams={teams} roles={roles} evaluation={evaluation} composition={composition} lockedTeamIds={lockedTeamIds} revealKey={revealKey} onToggleLock={toggleTeamLock} onRerollUnlocked={rerollUnlocked} canUndo={undoStack.length > 0} onUndo={() => { const previous = undoStack.at(-1); setUndoStack(undoStack.slice(0, -1)); setTeams(previous) }} onChange={changeTeams} onReroll={assignTeams} onAssignAll={assignAllRoles} onAssignTeam={(id) => changeTeams(teams.map((team) => team.id === id ? assignRoles(team, roles, roleRules) : team), '역할을 배정했습니다.')} onCopy={() => copyText(resultToText(teams), '결과를 복사했습니다.')} onShare={() => copyText(shareUrl(), '공유 링크를 복사했습니다.')} onQr={async () => setQr(await QRCode.toDataURL(shareUrl(), { width: 320, margin: 2 }))} onDownload={() => download(resultToText(teams), `팀-배정-${new Date().toISOString().slice(0, 10)}.txt`)} showStep={showStepLabels} />

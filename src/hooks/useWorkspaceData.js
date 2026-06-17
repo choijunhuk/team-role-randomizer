@@ -122,6 +122,17 @@ export function useWorkspaceData(currentUser) {
     return room
   }
 
+  const applyRoomSnapshot = (snapshot) => {
+    if (!snapshot) return false
+    setParticipants(Array.isArray(snapshot.participants) ? snapshot.participants : [])
+    setProfiles(snapshot.profiles ?? {})
+    setRoles(Array.isArray(snapshot.roles) && snapshot.roles.length ? snapshot.roles : DEFAULT_ROLES)
+    setRoleRules(snapshot.roleRules ?? {})
+    setHistories(Array.isArray(snapshot.histories) ? snapshot.histories : [])
+    setFairness({ ...EMPTY_FAIRNESS, ...(snapshot.fairness ?? {}) })
+    return true
+  }
+
   const removeRoom = (roomId) => {
     const nextRooms = deleteRoom(accountWorkspace, roomId)
     setRooms(nextRooms)
@@ -153,6 +164,7 @@ export function useWorkspaceData(currentUser) {
     resetWorkspace,
     createRoom,
     createInviteRoom,
+    applyRoomSnapshot,
     setActiveRoomId,
     removeRoom,
   }
