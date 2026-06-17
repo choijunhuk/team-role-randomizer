@@ -67,7 +67,14 @@ export function useWorkspaceData(currentUser) {
   useEffect(() => { if (workspaceLoaded) saveData('roleRules', roleRules, workspace) }, [roleRules, workspace, workspaceLoaded])
   useEffect(() => { if (workspaceLoaded) saveData('histories', histories, workspace) }, [histories, workspace, workspaceLoaded])
   useEffect(() => { if (workspaceLoaded) saveData('fairness', fairness, workspace) }, [fairness, workspace, workspaceLoaded])
-  useEffect(() => { if (workspaceLoaded) { saveData('theme', theme, workspace); document.documentElement.dataset.theme = theme } }, [theme, workspace, workspaceLoaded])
+  // Apply theme to <html> immediately via the spec attribute (data-theme-mode),
+  // and keep the legacy data-theme attribute in sync for any older selectors.
+  useEffect(() => {
+    const root = document.documentElement
+    root.dataset.themeMode = theme
+    root.dataset.theme = theme
+    if (workspaceLoaded) saveData('theme', theme, workspace)
+  }, [theme, workspace, workspaceLoaded])
 
   const importLegacyWorkspace = () => {
     importLegacyData(workspace)

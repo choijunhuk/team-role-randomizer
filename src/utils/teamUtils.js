@@ -156,6 +156,25 @@ export function createTeams(participants, teamCount, fairness = {}, histories = 
   }
 }
 
+// Distribute a flat list of names into `count` balanced buckets (shuffled).
+// Used by the "lock teams and reroll the rest" feature.
+export function balancedBuckets(names, count) {
+  const total = Math.max(1, count)
+  const capacities = Array.from({ length: total }, (_, index) =>
+    Math.floor(names.length / total) + (index < names.length % total ? 1 : 0),
+  )
+  const buckets = Array.from({ length: total }, () => [])
+  shuffle(names).forEach((name) => {
+    const available = buckets
+      .map((bucket, index) => ({ bucket, index }))
+      .filter(({ bucket, index }) => bucket.length < capacities[index])
+    const minSize = Math.min(...available.map(({ bucket }) => bucket.length))
+    const balanced = available.filter(({ bucket }) => bucket.length <= minSize)
+    shuffle(balanced)[0].bucket.push(name)
+  })
+  return buckets
+}
+
 export function assignRoles(team, roles, roleRules = {}) {
   const available = shuffle(roles)
   const used = new Set()

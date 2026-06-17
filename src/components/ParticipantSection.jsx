@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { Search, X } from 'lucide-react'
 import Section from './Section'
 import RosterPicker from './RosterPicker'
 import { useRoster } from '../hooks/useRoster'
 import { formatRosterParticipant } from '../utils/roster'
 import { formatParticipantIdentifier, parseParticipantLabel } from '../utils/participants'
+import { filterParticipants } from '../utils/participantFilter'
 
 export const EXAMPLES = [
   '김민수 (20251234)',
@@ -19,8 +21,10 @@ export const EXAMPLES = [
 export default function ParticipantSection({ participants, profiles, onProfiles, onAdd, onRemove, onClear, message, currentUser, showStep = true }) {
   const [input, setInput] = useState('')
   const [expanded, setExpanded] = useState('')
+  const [search, setSearch] = useState('')
   const roster = useRoster(currentUser)
   const submit = () => onAdd(input) && setInput('')
+  const visibleParticipants = filterParticipants(participants, search, profiles)
   const update = (name, field, value) => onProfiles({ ...profiles, [name]: { ...profiles[name], [field]: value } })
   const addFromRoster = (members) => {
     const fresh = members.filter((member) => !participants.includes(formatRosterParticipant(member)))
@@ -57,10 +61,18 @@ export default function ParticipantSection({ participants, profiles, onProfiles,
         />
       )}
       {message && <div className={`notice ${message.type}`}>{message.text}</div>}
-      <div className="list-toolbar"><strong>참가자 {participants.length}명</strong>{participants.length > 0 && <button className="text-button danger" onClick={onClear}>전체 삭제</button>}</div>
+      {participants.length > 4 && (
+        <div className="participant-search">
+          <Search size={16} aria-hidden="true" />
+          <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="이름·학번·전공으로 검색" aria-label="참가자 검색" />
+          {search && <button type="button" aria-label="검색어 지우기" onClick={() => setSearch('')}><X size={14} aria-hidden="true" /></button>}
+        </div>
+      )}
+      <div className="list-toolbar"><strong>참가자 {participants.length}명{search.trim() ? ` · ${visibleParticipants.length}명 표시` : ''}</strong>{participants.length > 0 && <button className="text-button danger" onClick={onClear}>전체 삭제</button>}</div>
       <div className="participant-list">
         {participants.length === 0 && <span className="empty-inline">아직 참가자가 없습니다.</span>}
-        {participants.map((name) => {
+        {participants.length > 0 && visibleParticipants.length === 0 && <span className="empty-inline">검색 결과가 없습니다.</span>}
+        {visibleParticipants.map((name) => {
           const parsed = parseParticipantLabel(name)
           return (
             <div className="participant-row" key={name}>

@@ -1,5 +1,23 @@
 import { describe, expect, it } from 'vitest'
-import { assignRoles, createTeams, decodeShareData, encodeShareData, evaluateTeams, validateTeamConstraints } from './teamUtils'
+import { assignRoles, balancedBuckets, createTeams, decodeShareData, encodeShareData, evaluateTeams, validateTeamConstraints } from './teamUtils'
+
+describe('balancedBuckets', () => {
+  it('distributes names as evenly as possible', () => {
+    const buckets = balancedBuckets(['a', 'b', 'c', 'd', 'e'], 2)
+    expect(buckets).toHaveLength(2)
+    const sizes = buckets.map((b) => b.length).sort()
+    expect(sizes).toEqual([2, 3])
+    expect(buckets.flat().sort()).toEqual(['a', 'b', 'c', 'd', 'e'])
+  })
+  it('handles more buckets than names', () => {
+    const buckets = balancedBuckets(['a'], 3)
+    expect(buckets.flat()).toEqual(['a'])
+    expect(buckets).toHaveLength(3)
+  })
+  it('treats a zero count as a single bucket', () => {
+    expect(balancedBuckets(['a', 'b'], 0).flat().sort()).toEqual(['a', 'b'])
+  })
+})
 
 const participants = ['가', '나', '다', '라', '마', '바', '사']
 const fairness = { fixedTeams: {}, avoidPairs: [], preferPairs: [], repeatWeight: 8, balanceFields: [] }

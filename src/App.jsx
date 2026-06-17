@@ -17,8 +17,9 @@ import { DEFAULT_ROLES, EMPTY_FAIRNESS, useWorkspaceData } from './hooks/useWork
 import { useInviteState } from './hooks/useInviteState'
 import { parseParticipantInput } from './utils/participants'
 import { isAdminUser } from './utils/roster'
-import { assignRoles, createTeams, decodeShareData, encodeShareData, resultToText, validateTeamConstraints } from './utils/teamUtils'
+import { assignRoles, balancedBuckets, createTeams, decodeShareData, encodeShareData, resultToText, validateTeamConstraints } from './utils/teamUtils'
 import { getWorkspaceInsights } from './utils/workspaceInsights'
+import { getTeamComposition, rerollUnlockedTeams } from './utils/teamComposition'
 
 const clone = (value) => structuredClone(value)
 
@@ -30,6 +31,8 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
   const [teams, setTeams] = useState([])
   const [evaluation, setEvaluation] = useState(null)
   const [undoStack, setUndoStack] = useState([])
+  const [lockedTeamIds, setLockedTeamIds] = useState([])
+  const [revealKey, setRevealKey] = useState(0)
   const [message, setMessage] = useState(null)
   const [toast, setToast] = useState('')
   const [qr, setQr] = useState('')
@@ -69,7 +72,10 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
     setTeams([])
     setEvaluation(null)
     setUndoStack([])
+    setLockedTeamIds([])
   }, [workspace.prefix])
+
+  const composition = useMemo(() => getTeamComposition(teams, profiles), [teams, profiles])
 
   const saveSnapshot = () => setUndoStack((stack) => [...stack.slice(-14), clone(teams)])
   const changeTeams = (nextTeams, notice) => { saveSnapshot(); setTeams(nextTeams); if (notice) notify(notice) }
@@ -110,9 +116,22 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
     const result = createTeams(participants, expectedTeams, fairness, histories, profiles)
     changeTeams(result.teams)
     setEvaluation(result.evaluation)
+    setLockedTeamIds([])
+    setRevealKey((value) => value + 1)
     addHistory(result.teams)
     notify(`${result.teams.length}개 팀을 배정했습니다.`)
     window.setTimeout(() => document.querySelector('.result-section')?.scrollIntoView({ behavior: 'smooth' }), 50)
+  }
+  const toggleTeamLock = (teamId) => setLockedTeamIds((ids) => ids.includes(teamId) ? ids.filter((id) => id !== teamId) : [...ids, teamId])
+  const rerollUnlocked = () => {
+    if (teams.length === 0) return
+    if (lockedTeamIds.length === 0) return assignTeams()
+    if (lockedTeamIds.length >= teams.length) return notify('잠금 해제된 팀이 없습니다.')
+    const next = rerollUnlockedTeams(teams, lockedTeamIds, balancedBuckets)
+    changeTeams(next)
+    setEvaluation(null)
+    setRevealKey((value) => value + 1)
+    notify('잠그지 않은 팀만 다시 섞었습니다.')
   }
   const shareUrl = () => `${location.origin}${location.pathname}#share=${encodeURIComponent(encodeShareData({ teams }))}`
   const copyText = async (text, success) => {
@@ -154,7 +173,27 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
     notify(`${room.name} 방을 삭제했습니다.`)
   }
 
-  const topbar = <nav className="topbar"><BrandLogo href="#" /><div><span className="user-chip">{workspace.label} · 개인 작업공간</span><NotificationBell onInvite={addNotificationInvite} /><button className="icon-button" aria-label={theme === 'light' ? '다크 모드로 변경' : '라이트 모드로 변경'} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Moon size={16} aria-hidden="true" /> : <Sun size={16} aria-hidden="true" />}</button>{showStepLabels && <button className="button ghost small" onClick={resetAll}>현재 방 초기화</button>}<button className="button ghost small" disabled={logoutPending} onClick={onLogout}>{logoutPending ? '로그아웃 중...' : '로그아웃'}</button></div></nav>
+  const assignAllRoles = () => changeTeams(teams.map((team) => assignRoles(team, roles, roleRules)), '모든 역할을 배정했습니다.')
+
+  useEffect(() => {
+    if (!showStepLabels) return undefined
+    const handler = (event) => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return
+      const target = event.target
+      const tag = target?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) return
+      const key = event.key.toLowerCase()
+      if (key === 'r') { event.preventDefault(); assignTeams() }
+      else if (key === 'e' && teams.length) { event.preventDefault(); rerollUnlocked() }
+      else if (key === 'a' && teams.length) { event.preventDefault(); assignAllRoles() }
+      else if (key === 'z' && undoStack.length) { event.preventDefault(); const previous = undoStack.at(-1); setUndoStack(undoStack.slice(0, -1)); setTeams(previous) }
+      else if (key === 'c' && teams.length) { event.preventDefault(); copyText(resultToText(teams), '결과를 복사했습니다.') }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  })
+
+  const topbar = <div className="topbar-wrap"><nav className="topbar"><BrandLogo href="#" /><div><span className="user-chip">{workspace.label} · 개인 작업공간</span><NotificationBell onInvite={addNotificationInvite} /><button className="icon-button" aria-label={theme === 'light' ? '다크 모드로 변경' : '라이트 모드로 변경'} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Moon size={16} aria-hidden="true" /> : <Sun size={16} aria-hidden="true" />}</button>{showStepLabels && <button className="button ghost small" onClick={resetAll}>현재 방 초기화</button>}<button className="button ghost small" disabled={logoutPending} onClick={onLogout}>{logoutPending ? '로그아웃 중...' : '로그아웃'}</button></div></nav></div>
 
   return <div className={`app-shell ${showStepLabels ? 'admin-workspace' : 'member-workspace'}`}>
     {topbar}
@@ -213,7 +252,7 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
           </div>
           <RoleSection roles={roles} roleRules={roleRules} participants={participants} onRules={setRoleRules} onAdd={addRole} onRemove={(role) => setRoles(roles.filter((item) => item !== role))} showStep={showStepLabels} />
           <div className="assign-banner"><div><span>READY</span><strong>{participants.length}명을 {expectedTeams || 0}개 팀으로 배정합니다.</strong></div><button className="button primary large" onClick={assignTeams}>랜덤 팀 배정하기 <ArrowRight size={17} aria-hidden="true" /></button></div>
-          <ResultSection teams={teams} roles={roles} evaluation={evaluation} canUndo={undoStack.length > 0} onUndo={() => { const previous = undoStack.at(-1); setUndoStack(undoStack.slice(0, -1)); setTeams(previous) }} onChange={changeTeams} onReroll={assignTeams} onAssignAll={() => changeTeams(teams.map((team) => assignRoles(team, roles, roleRules)), '모든 역할을 배정했습니다.')} onAssignTeam={(id) => changeTeams(teams.map((team) => team.id === id ? assignRoles(team, roles, roleRules) : team), '역할을 배정했습니다.')} onCopy={() => copyText(resultToText(teams), '결과를 복사했습니다.')} onShare={() => copyText(shareUrl(), '공유 링크를 복사했습니다.')} onQr={async () => setQr(await QRCode.toDataURL(shareUrl(), { width: 320, margin: 2 }))} onDownload={() => download(resultToText(teams), `팀-배정-${new Date().toISOString().slice(0, 10)}.txt`)} showStep={showStepLabels} />
+          <ResultSection teams={teams} roles={roles} evaluation={evaluation} composition={composition} lockedTeamIds={lockedTeamIds} revealKey={revealKey} onToggleLock={toggleTeamLock} onRerollUnlocked={rerollUnlocked} canUndo={undoStack.length > 0} onUndo={() => { const previous = undoStack.at(-1); setUndoStack(undoStack.slice(0, -1)); setTeams(previous) }} onChange={changeTeams} onReroll={assignTeams} onAssignAll={assignAllRoles} onAssignTeam={(id) => changeTeams(teams.map((team) => team.id === id ? assignRoles(team, roles, roleRules) : team), '역할을 배정했습니다.')} onCopy={() => copyText(resultToText(teams), '결과를 복사했습니다.')} onShare={() => copyText(shareUrl(), '공유 링크를 복사했습니다.')} onQr={async () => setQr(await QRCode.toDataURL(shareUrl(), { width: 320, margin: 2 }))} onDownload={() => download(resultToText(teams), `팀-배정-${new Date().toISOString().slice(0, 10)}.txt`)} showStep={showStepLabels} />
           <HistorySection histories={histories} onLoad={(history) => { changeTeams(clone(history.teams)); notify('기록을 불러왔습니다.') }} onDelete={(id) => setHistories(histories.filter((item) => item.id !== id))} onToggleFavorite={(id) => setHistories(histories.map((item) => item.id === id ? { ...item, favorite: !item.favorite } : item))} onClear={() => window.confirm('기록을 모두 삭제할까요?') && setHistories([])} onExport={exportJson} onImport={importJson} showStep={showStepLabels} />
         </div>
       </main>
