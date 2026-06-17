@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ROSTER_ENDPOINT, dedupeAgainst, fetchRoster, filterRoster, filterRosterByStatus, formatRosterIdentifier, formatRosterParticipant, getRosterGenerationOptions, isAdminUser, rosterToCsv, searchRoster, summarizeRoster } from './roster'
+import { ROSTER_ENDPOINT, dedupeAgainst, fetchRoster, filterRoster, filterRosterByStatus, formatRosterIdentifier, formatRosterParticipant, getRosterGenerationOptions, isAdminUser, isRosterManager, rosterToCsv, searchRoster, summarizeRoster } from './roster'
 
 describe('roster utilities', () => {
   it('fetches eligible members and normalizes fields', async () => {
@@ -98,6 +98,15 @@ describe('roster utilities', () => {
   it('treats the TeamMate owner student account as an admin', () => {
     expect(isAdminUser({ role: 'MEMBER', studentId: '2026402040' })).toBe(true)
     expect(isAdminUser({ role: 'MEMBER', studentId: ' 2026402040 ' })).toBe(true)
+  })
+
+  it('restricts roster management to the listed student IDs only', () => {
+    expect(isRosterManager({ role: 'MEMBER', studentId: '2026402040' })).toBe(true)
+    expect(isRosterManager({ role: 'MEMBER', studentId: ' 2026402040 ' })).toBe(true)
+    // a generic ADMIN role must NOT grant roster access
+    expect(isRosterManager({ role: 'ADMIN', studentId: '2099999999' })).toBe(false)
+    expect(isRosterManager({ role: 'ADMIN' })).toBe(false)
+    expect(isRosterManager(null)).toBe(false)
   })
 
   it('summarizes roster availability and generation counts for admin tools', () => {

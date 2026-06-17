@@ -167,3 +167,10 @@ export function isAdminUser(user) {
   const studentId = String(user?.studentId ?? '').trim()
   return role === 'ADMIN' || ADMIN_STUDENT_IDS.has(studentId)
 }
+
+// Adding participants from the club roster is restricted to the listed
+// student IDs only — the generic ADMIN role does not grant roster access.
+export function isRosterManager(user) {
+  const studentId = String(user?.studentId ?? '').trim()
+  return ADMIN_STUDENT_IDS.has(studentId)
+}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { fetchRoster, isAdminUser } from '../utils/roster'
+import { fetchRoster, isRosterManager } from '../utils/roster'
 
 function reasonToMessage(reason) {
   if (reason === 'unauthorized' || reason === 'forbidden') return '동아리 명단 접근 권한이 없습니다.'
@@ -9,7 +9,7 @@ function reasonToMessage(reason) {
 }
 
 export function useRoster(currentUser) {
-  const eligible = isAdminUser(currentUser)
+  const eligible = isRosterManager(currentUser)
   const [members, setMembers] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
