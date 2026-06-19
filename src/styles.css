@@ -144,7 +144,7 @@ main { max-width: 1180px; margin: auto; padding: 0 20px 80px; }
 .setup-grid { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(340px, .92fr); gap: 20px; align-items: start; }
 .support-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
 .invite-focus-grid { align-items: stretch; }
-.command-center { padding: 20px; border: 1px solid var(--app-hairline); border-radius: 8px; background: var(--app-surface); box-shadow: var(--shadow); display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, .58fr); gap: 20px; align-items: stretch; }
+.command-center { padding: 18px 20px; border: 1px solid var(--app-hairline); border-radius: 14px; background: var(--app-surface-soft); box-shadow: none; display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, .58fr); gap: 20px; align-items: stretch; }
 .command-main { min-width: 0; display: grid; align-content: center; gap: 12px; }
 .command-title { display: grid; gap: 5px; min-width: 0; }
 .command-title span { color: var(--primary); font: 800 11px Manrope; display: inline-flex; align-items: center; gap: 6px; }
@@ -245,8 +245,41 @@ main { max-width: 1180px; margin: auto; padding: 0 20px 80px; }
   flex: 0 0 20px;
 }
 .result-op-card p { margin: 0 0 10px; color: var(--muted); font-size: 11px; line-height: 1.55; }
-.panel { background: var(--app-surface); border: 1px solid var(--app-hairline); border-radius: 8px; padding: 24px; margin-bottom: 0; box-shadow: var(--shadow); }
+.panel { background: var(--app-surface); border: 1px solid var(--app-hairline); border-radius: 14px; padding: 24px; margin-bottom: 0; box-shadow: var(--shadow); }
 .panel { scroll-margin-top: 18px; }
+
+/* ======================================================================
+   PROGRESSIVE DISCLOSURE — calm grouping for secondary tools.
+   Keeps every feature reachable while the default view stays focused.
+   ====================================================================== */
+.tool-stack { display: grid; gap: 10px; margin-top: 6px; }
+.tool-stack-label { margin: 8px 2px 0; color: var(--app-subtle); font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.disclosure { border: 1px solid var(--app-hairline); border-radius: 14px; background: var(--app-surface); box-shadow: var(--shadow); overflow: hidden; transition: border-color var(--motion) ease; scroll-margin-top: 90px; }
+.disclosure.is-open { border-color: var(--app-hairline-strong); }
+.disclosure-trigger { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 16px 18px; border: 0; background: transparent; color: var(--app-text); text-align: left; }
+.disclosure-trigger:hover { background: var(--app-surface-soft); }
+.disclosure-label { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.disclosure-label > svg { flex: 0 0 auto; color: var(--app-subtle); }
+.disclosure.is-open .disclosure-label > svg { color: var(--app-accent); }
+.disclosure-label > span { display: grid; gap: 2px; min-width: 0; }
+.disclosure-label strong { font-size: 14px; font-weight: 700; letter-spacing: -0.01em; }
+.disclosure-label small { color: var(--app-muted); font-size: 12px; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; }
+.disclosure-meta { display: inline-flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+.disclosure-badge { min-width: 22px; height: 22px; padding: 0 8px; display: inline-grid; place-items: center; border-radius: 999px; background: var(--app-surface-soft); border: 1px solid var(--app-hairline); color: var(--app-muted); font: 800 11px var(--apple-font-family); font-style: normal; }
+.disclosure.is-open .disclosure-badge { background: var(--app-accent-soft); border-color: var(--app-accent-border); color: var(--app-accent-text); }
+.disclosure-chevron { color: var(--app-subtle); transition: transform var(--motion) ease; }
+.disclosure.is-open .disclosure-chevron { transform: rotate(180deg); color: var(--app-accent); }
+.disclosure-body { padding: 4px 18px 20px; border-top: 1px solid var(--app-hairline); display: grid; gap: 16px; animation: disclosure-in 0.22s ease both; }
+@keyframes disclosure-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+/* Embedded sections shed their own panel chrome so the Disclosure is the only frame. */
+.section-embedded { display: grid; gap: 14px; padding-top: 12px; }
+.section-embedded-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.section-embedded-header p { margin: 0; color: var(--app-muted); font-size: 13px; line-height: 1.6; }
+.disclosure-body .support-grid { gap: 14px; margin: 0; }
+.disclosure-body .support-grid > .section-embedded { padding: 16px; border: 1px solid var(--app-hairline); border-radius: 12px; background: var(--app-surface-soft); }
+.disclosure-body .invite-progress-board,
+.disclosure-body .shared-room-panel.is-embedded { border: 0; box-shadow: none; padding: 0; background: transparent; }
 .section-header { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
 .section-header h2 { font-size: 20px; margin: 4px 0 5px; letter-spacing: -0.01em; font-weight: 700; line-height: 1.15; }
 .section-header p { color: var(--muted); font-size: 13px; margin: 0; }
@@ -360,12 +393,11 @@ textarea { resize: vertical; min-height: 96px; width: 100%; }
 .compact-input { display: flex; gap: 8px; margin-bottom: 16px; }
 .compact-input input { flex: 1; }
 .role-tags .tag { background: color-mix(in srgb, var(--primary) 8%, var(--panel)); }
-.assign-banner { padding: 24px 28px; margin: 4px 0 20px; border-radius: 8px; color: #fff; background: linear-gradient(135deg, var(--app-accent), var(--app-accent-hover)); box-shadow: 0 18px 50px color-mix(in srgb, var(--app-accent) 22%, transparent); display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-.assign-banner .button.primary { background: #fff; color: var(--app-accent-text); }
-.assign-banner .button.primary:hover { background: #fff; box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18); }
+/* Calm "ready to assign" bar: neutral surface, accent reserved for the action. */
+.assign-banner { position: sticky; bottom: 16px; z-index: 5; padding: 16px 20px; margin: 8px 0; border-radius: 14px; color: var(--app-text); background: color-mix(in srgb, var(--app-surface) 90%, transparent); backdrop-filter: saturate(180%) blur(16px); -webkit-backdrop-filter: saturate(180%) blur(16px); border: 1px solid var(--app-hairline); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06); display: flex; align-items: center; justify-content: space-between; gap: 20px; }
 .assign-banner div span, .assign-banner div strong { display: block; }
-.assign-banner div span { color: rgba(255, 255, 255, 0.85); font: 800 10px var(--apple-font-family); letter-spacing: 0.06em; margin-bottom: 6px; }
-.assign-banner div strong { font-size: 16px; }
+.assign-banner div span { color: var(--app-accent-text); font: 800 10px var(--apple-font-family); letter-spacing: 0.06em; margin-bottom: 4px; }
+.assign-banner div strong { font-size: 15px; }
 .result-toolbar { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
 .fairness-scoreboard { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 14px 0 16px; }
 .score-pill { display: grid; gap: 3px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-soft); }

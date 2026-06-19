@@ -36,6 +36,7 @@ export default function InviteSection({
   showStep = true,
   roomReady = true,
   canCreateRoom = false,
+  embedded = false,
 }) {
   const [raw, setRaw] = useState('')
   const [message, setMessage] = useState('')
@@ -65,6 +66,7 @@ export default function InviteSection({
           ? '초대하려면 먼저 방을 만들어주세요. 방을 만든 뒤 초대 링크와 COMS 알림을 보낼 수 있습니다.'
           : '받은 초대를 수락하면 방이 자동으로 만들어집니다. 방이 생긴 다음 초대할 수 있습니다.'}
         showStep={showStep}
+        embedded={embedded}
       >
         <div className="notice warning">
           {canCreateRoom
@@ -163,6 +165,7 @@ export default function InviteSection({
       title="초대 대상"
       description="이름 (학번) 또는 이름 (17기)로 입력하세요. 학번이 있는 대상에게만 COMS 알림을 보냅니다."
       showStep={showStep}
+      embedded={embedded}
       actions={targets.length > 0 && <button className="button ghost small" onClick={reset}>비우기</button>}
     >
       <div className="input-row">

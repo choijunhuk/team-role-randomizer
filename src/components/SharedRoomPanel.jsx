@@ -1,4 +1,4 @@
-import { Cloud, DownloadCloud, UploadCloud } from 'lucide-react'
+import { DownloadCloud, UploadCloud } from 'lucide-react'
 import { useState } from 'react'
 import { buildRoomSnapshot, fetchRoomSnapshot, getSharedRoomMode, publishRoomSnapshot } from '../utils/sharedRooms'
 
@@ -23,6 +23,7 @@ export default function SharedRoomPanel({
   histories,
   onApplySnapshot,
   onNotify,
+  embedded = false,
 }) {
   const [pending, setPending] = useState('')
   const [result, setResult] = useState(null)
@@ -52,9 +53,8 @@ export default function SharedRoomPanel({
   }
 
   return (
-    <section className="shared-room-panel" aria-label="공유 방 동기화">
+    <section className={`shared-room-panel ${embedded ? 'is-embedded' : ''}`} aria-label="공유 방 동기화">
       <div className="mini-panel-head">
-        <strong><Cloud size={15} aria-hidden="true" />공유 방 동기화</strong>
         <span>{reasonText(result)}</span>
       </div>
       <div className="shared-room-actions">
