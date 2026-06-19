@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowRight, Moon, Sun, X } from 'lucide-react'
+import { ArrowRight, ClipboardList, Cloud, History, Mailbox, Moon, Sun, X } from 'lucide-react'
 import QRCode from 'qrcode'
 import ParticipantSection from './components/ParticipantSection'
 import QuickStartPanel from './components/QuickStartPanel'
@@ -17,6 +17,7 @@ import WorkspaceNav from './components/WorkspaceNav'
 import WorkspaceCommandCenter from './components/WorkspaceCommandCenter'
 import InviteProgressBoard from './components/InviteProgressBoard'
 import SharedRoomPanel from './components/SharedRoomPanel'
+import Disclosure from './components/Disclosure'
 import { DEFAULT_ROLES, EMPTY_FAIRNESS, useWorkspaceData } from './hooks/useWorkspaceData'
 import { useInviteState } from './hooks/useInviteState'
 import { EXAMPLES } from './components/ParticipantSection'
@@ -278,19 +279,6 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
         />
         <div className="workspace-content">
           <WorkspaceCommandCenter insights={workspaceInsights} />
-          <SharedRoomPanel
-            roomReady={roomReady}
-            room={activeRoom}
-            currentUser={currentUser}
-            participants={participants}
-            profiles={profiles}
-            roles={roles}
-            roleRules={roleRules}
-            fairness={fairness}
-            histories={histories}
-            onApplySnapshot={applyRoomSnapshot}
-            onNotify={notify}
-          />
           {participants.length < 2 && (
             <QuickStartPanel
               roomReady
@@ -301,15 +289,40 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
             />
           )}
           <div className="setup-grid"><ParticipantSection participants={participants} profiles={profiles} onProfiles={setProfiles} onAdd={addParticipants} onRemove={(name) => setParticipants(participants.filter((item) => item !== name))} onClear={() => setParticipants([])} message={message} currentUser={currentUser} showStep={showStepLabels} /><TeamSettings mode={mode} setMode={setMode} value={settingValue} setValue={setSettingValue} fairness={fairness} setFairness={setFairness} participants={participants} constraintReport={constraintReport} showStep={showStepLabels} /></div>
-          <div className="support-grid">
-            <InviteInboxSection invites={inbox} currentUser={currentUser} onRefresh={(next) => setInbox(next)} onJoin={joinInvite} onDismiss={dismissInvite} showStep={showStepLabels} />
-            <InviteSection currentUser={currentUser} onNotify={notify} sentInvites={sentInvites} onRecordSentInvite={recordSentInvite} onDeleteSentInvite={deleteSentInvite} showStep={showStepLabels} roomReady={roomReady} canCreateRoom={showStepLabels} />
-          </div>
-          <InviteProgressBoard progress={inviteProgress} />
-          <RoleSection roles={roles} roleRules={roleRules} participants={participants} onRules={setRoleRules} onAdd={addRole} onRemove={(role) => setRoles(roles.filter((item) => item !== role))} showStep={showStepLabels} />
+          <Disclosure id="roles" icon={ClipboardList} title="역할 설정" hint="역할 추가 · 참가자별 고정/제외 규칙" badge={roles.length} defaultOpen={false}>
+            <RoleSection roles={roles} roleRules={roleRules} participants={participants} onRules={setRoleRules} onAdd={addRole} onRemove={(role) => setRoles(roles.filter((item) => item !== role))} showStep={false} embedded />
+          </Disclosure>
           <div className="assign-banner"><div><span>READY</span><strong>{participants.length}명을 {expectedTeams || 0}개 팀으로 배정합니다.</strong></div><button className="button primary large" onClick={assignTeams}>랜덤 팀 배정하기 <ArrowRight size={17} aria-hidden="true" /></button></div>
           <ResultSection teams={teams} roles={roles} evaluation={evaluation} composition={composition} lockedTeamIds={lockedTeamIds} revealKey={revealKey} onToggleLock={toggleTeamLock} onRerollUnlocked={rerollUnlocked} canUndo={undoStack.length > 0} onUndo={() => { const previous = undoStack.at(-1); setUndoStack(undoStack.slice(0, -1)); setTeams(previous) }} onChange={changeTeams} onReroll={assignTeams} onAssignAll={assignAllRoles} onAssignTeam={(id) => changeTeams(teams.map((team) => team.id === id ? assignRoles(team, roles, roleRules) : team), '역할을 배정했습니다.')} onCopy={() => copyText(resultToText(teams), '결과를 복사했습니다.')} onShare={() => copyText(shareUrl(), '공유 링크를 복사했습니다.')} onQr={async () => setQr(await QRCode.toDataURL(shareUrl(), { width: 320, margin: 2 }))} onDownload={() => download(resultToText(teams), `팀-배정-${new Date().toISOString().slice(0, 10)}.txt`)} showStep={showStepLabels} />
-          <HistorySection histories={histories} onLoad={(history) => { changeTeams(clone(history.teams)); notify('기록을 불러왔습니다.') }} onDelete={(id) => setHistories(histories.filter((item) => item.id !== id))} onToggleFavorite={(id) => setHistories(histories.map((item) => item.id === id ? { ...item, favorite: !item.favorite } : item))} onClear={() => window.confirm('기록을 모두 삭제할까요?') && setHistories([])} onExport={exportJson} onImport={importJson} showStep={showStepLabels} />
+          <div className="tool-stack">
+            <p className="tool-stack-label">작업 도구</p>
+            <Disclosure id="invites" icon={Mailbox} title="초대 관리" hint="받은 초대 수락 · 링크와 알림 보내기" badge={inbox.length + sentInvites.length} defaultOpen={inbox.length > 0}>
+              <div className="support-grid">
+                <InviteInboxSection invites={inbox} currentUser={currentUser} onRefresh={(next) => setInbox(next)} onJoin={joinInvite} onDismiss={dismissInvite} showStep={false} embedded />
+                <InviteSection currentUser={currentUser} onNotify={notify} sentInvites={sentInvites} onRecordSentInvite={recordSentInvite} onDeleteSentInvite={deleteSentInvite} showStep={false} roomReady={roomReady} canCreateRoom={showStepLabels} embedded />
+              </div>
+              <InviteProgressBoard progress={inviteProgress} />
+            </Disclosure>
+            <Disclosure id="history" icon={History} title="최근 기록 · 백업" hint="저장한 배정 불러오기 · JSON 내보내기/가져오기" badge={histories.length} defaultOpen={false}>
+              <HistorySection histories={histories} onLoad={(history) => { changeTeams(clone(history.teams)); notify('기록을 불러왔습니다.') }} onDelete={(id) => setHistories(histories.filter((item) => item.id !== id))} onToggleFavorite={(id) => setHistories(histories.map((item) => item.id === id ? { ...item, favorite: !item.favorite } : item))} onClear={() => window.confirm('기록을 모두 삭제할까요?') && setHistories([])} onExport={exportJson} onImport={importJson} showStep={false} embedded />
+            </Disclosure>
+            <Disclosure icon={Cloud} title="공유 방 동기화" hint="이 방의 스냅샷을 서버와 주고받기" defaultOpen={false}>
+              <SharedRoomPanel
+                roomReady={roomReady}
+                room={activeRoom}
+                currentUser={currentUser}
+                participants={participants}
+                profiles={profiles}
+                roles={roles}
+                roleRules={roleRules}
+                fairness={fairness}
+                histories={histories}
+                onApplySnapshot={applyRoomSnapshot}
+                onNotify={notify}
+                embedded
+              />
+            </Disclosure>
+          </div>
         </div>
       </main>
     )}

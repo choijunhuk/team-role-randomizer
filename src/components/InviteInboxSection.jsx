@@ -11,7 +11,7 @@ const formatTime = (value) => {
   }
 }
 
-export default function InviteInboxSection({ invites, onRefresh, onJoin, onDismiss, currentUser, showStep = true }) {
+export default function InviteInboxSection({ invites, onRefresh, onJoin, onDismiss, currentUser, showStep = true, embedded = false }) {
   const [pending, setPending] = useState(false)
   const [notice, setNotice] = useState(null)
 
@@ -41,6 +41,7 @@ export default function InviteInboxSection({ invites, onRefresh, onJoin, onDismi
       title="받은 초대 알림"
       description={`${currentUser?.studentId ? `학번 ${currentUser.studentId}` : '내'} 앞으로 도착한 팀 초대를 확인하세요.`}
       showStep={showStep}
+      embedded={embedded}
       actions={<button className="button ghost small" onClick={refresh} disabled={pending}>{pending ? '불러오는 중...' : '새로고침'}</button>}
     >
       {invites.length === 0 && <span className="empty-inline">받은 초대가 없습니다.</span>}
