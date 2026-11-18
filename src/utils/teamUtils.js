@@ -1,3 +1,5 @@
+import { normalizePreference } from './participants'
+
 export function shuffle(items) {
   const result = [...items]
   for (let index = result.length - 1; index > 0; index -= 1) {
@@ -67,24 +69,92 @@ export function evaluateTeams(teams, fairness = {}, histories = [], profiles = {
   return { score, violations: [...new Set(violations)], breakdown, details }
 }
 
-export function validateTeamConstraints(participants, teamCount, fairness = {}) {
+export function preferenceFor(name, profiles = {}, roleRules = {}) {
+  const profile = normalizePreference(profiles[name]?.preference)
+  const fixedRole = normalizePreference(roleRules[name]?.fixed)
+  return profile && profile !== 'any' ? profile : fixedRole || profile || 'any'
+}
+
+export function profilesWithAssignedCategories(teams, profiles = {}, roleRules = {}) {
+  const effective = { ...profiles }
+  for (const member of teams.flatMap((team) => team.members ?? [])) {
+    const category = normalizePreference(member.role)
+    if (preferenceFor(member.name, profiles, roleRules) === 'any' && (category === 'hard' || category === 'soft')) {
+      effective[member.name] = { ...profiles[member.name], preference: category }
+    }
+  }
+  return effective
+}
+
+export function preferenceBuckets(participants, capacities, fixedTeams = {}, profiles = {}, roleRules = {}) {
+  const hard = participants.filter((name) => preferenceFor(name, profiles, roleRules) === 'hard')
+  const soft = participants.filter((name) => preferenceFor(name, profiles, roleRules) === 'soft')
+  if (!hard.length || !soft.length) return null
+  const fixed = capacities.map(() => [])
+  for (const [name, number] of Object.entries(fixedTeams)) {
+    const index = Number(number) - 1
+    if (participants.includes(name) && Number.isInteger(index) && index >= 0 && index < fixed.length) fixed[index].push(name)
+  }
+  const choices = capacities.map((capacity, index) => {
+    const sides = new Set(fixed[index].map((name) => preferenceFor(name, profiles, roleRules)).filter((side) => side !== 'any'))
+    if (fixed[index].length > capacity || sides.size > 1) return []
+    return sides.size ? [...sides] : ['hard', 'soft']
+  })
+  const freeSeats = capacities.map((capacity, index) => capacity - fixed[index].length)
+  const fixedNames = new Set(fixed.flat())
+  const freeHard = hard.filter((name) => !fixedNames.has(name)).length
+  const freeSoft = soft.filter((name) => !fixedNames.has(name)).length
+  const totalFree = freeSeats.reduce((total, seats) => total + seats, 0)
+  let possible = new Map([[0, []]])
+  freeSeats.forEach((seats, index) => {
+    const next = new Map()
+    for (const [used, selected] of shuffle([...possible])) {
+      for (const side of shuffle(choices[index])) {
+        const size = used + (side === 'hard' ? seats : 0)
+        if (!next.has(size)) next.set(size, [...selected, side])
+      }
+    }
+    possible = next
+  })
+  const valid = [...possible].filter(([hardSeats]) => hardSeats >= freeHard && totalFree - hardSeats >= freeSoft)
+  if (!valid.length) return null
+  const sides = shuffle(valid)[0][1]
+  const teams = fixed.map((names) => [...names])
+  const assigned = new Set(teams.flat())
+  for (const [group, side] of [[hard, 'hard'], [soft, 'soft'], [participants.filter((name) => preferenceFor(name, profiles, roleRules) === 'any'), 'any']]) {
+    for (const name of shuffle(group.filter((person) => !assigned.has(person)))) {
+      const available = teams.map((team, index) => ({ team, index })).filter(({ team, index }) => team.length < capacities[index] && (side === 'any' || sides[index] === side))
+      const smallest = Math.min(...available.map(({ team }) => team.length))
+      shuffle(available.filter(({ team }) => team.length === smallest))[0].team.push(name)
+    }
+  }
+  return teams
+}
+
+export function validateTeamConstraints(participants, teamCount, fairness = {}, profiles = {}, roleRules = {}) {
   const count = Math.max(1, Math.min(Number(teamCount) || 1, participants.length || 1))
   const capacities = Array.from({ length: count }, (_, index) =>
     Math.floor(participants.length / count) + (index < participants.length % count ? 1 : 0),
   )
   const fixedByTeam = new Map()
+  const errors = []
+  const blockingErrors = []
+  const block = (message) => { errors.push(message); blockingErrors.push(message) }
   Object.entries(fairness.fixedTeams ?? {}).forEach(([name, teamNumber]) => {
     const teamIndex = Number(teamNumber) - 1
-    if (!participants.includes(name) || teamIndex < 0 || teamIndex >= count) return
+    if (!participants.includes(name) || !teamNumber) return
+    if (!Number.isInteger(teamIndex) || teamIndex < 0 || teamIndex >= count) {
+      block(`${name}님의 고정 팀 번호를 확인해주세요.`)
+      return
+    }
     const list = fixedByTeam.get(teamIndex) ?? []
     list.push(name)
     fixedByTeam.set(teamIndex, list)
   })
 
-  const errors = []
   fixedByTeam.forEach((names, teamIndex) => {
     if (names.length > capacities[teamIndex]) {
-      errors.push(`${teamIndex + 1}팀에 고정된 참가자가 정원 ${capacities[teamIndex]}명을 초과했습니다.`)
+      block(`${teamIndex + 1}팀에 고정된 참가자가 정원 ${capacities[teamIndex]}명을 초과했습니다.`)
     }
   })
 
@@ -96,6 +166,19 @@ export function validateTeamConstraints(participants, teamCount, fairness = {}) 
     }
   })
 
+  for (const name of participants) {
+    const preferred = normalizePreference(profiles[name]?.preference)
+    const fixed = normalizePreference(roleRules[name]?.fixed)
+    if (preferred && preferred !== 'any' && fixed && fixed !== 'any' && preferred !== fixed) {
+      block(`${name}님의 희망 분야와 고정 역할이 서로 다릅니다.`)
+    }
+  }
+  const hard = participants.some((name) => preferenceFor(name, profiles, roleRules) === 'hard')
+  const soft = participants.some((name) => preferenceFor(name, profiles, roleRules) === 'soft')
+  if (hard && soft && !preferenceBuckets(participants, capacities, fairness.fixedTeams, profiles, roleRules)) {
+    block('하드와 소프트를 분리할 수 없습니다. 팀 개수와 고정 팀 배정을 확인해주세요.')
+  }
+
   const warnings = []
   if ((fairness.avoidPairs ?? []).length) {
     warnings.push(`금지 조건 ${(fairness.avoidPairs ?? []).length}개가 있어 무작위 시도 후에도 위반이 남을 수 있습니다.`)
@@ -104,13 +187,15 @@ export function validateTeamConstraints(participants, teamCount, fairness = {}) 
     warnings.push('속성 균형은 입력된 참가자 속성만 기준으로 계산됩니다.')
   }
 
-  return { errors, warnings }
+  return { errors, blockingErrors, warnings }
 }
 
-function makeCandidate(participants, teamCount, fairness) {
+function makeCandidate(participants, teamCount, fairness, profiles, roleRules) {
   const capacities = Array.from({ length: teamCount }, (_, index) =>
     Math.floor(participants.length / teamCount) + (index < participants.length % teamCount ? 1 : 0),
   )
+  const separated = preferenceBuckets(participants, capacities, fairness.fixedTeams, profiles, roleRules)
+  if (separated) return separated
   const teams = Array.from({ length: teamCount }, () => [])
   const fixedNames = new Set()
 
@@ -131,14 +216,16 @@ function makeCandidate(participants, teamCount, fairness) {
   return teams
 }
 
-export function createTeams(participants, teamCount, fairness = {}, histories = [], profiles = {}) {
+export function createTeams(participants, teamCount, fairness = {}, histories = [], profiles = {}, roleRules = {}) {
   const count = Math.max(1, Math.min(teamCount, participants.length))
+  const errors = validateTeamConstraints(participants, count, fairness, profiles, roleRules).blockingErrors
+  if (errors.length) throw new Error(errors[0])
   let bestTeams = null
   let bestEvaluation = null
   const attempts = Math.min(300, Math.max(60, participants.length * 12))
 
   for (let attempt = 0; attempt < attempts; attempt += 1) {
-    const candidate = makeCandidate(participants, count, fairness)
+    const candidate = makeCandidate(participants, count, fairness, profiles, roleRules)
     const evaluation = evaluateTeams(candidate, fairness, histories, profiles)
     if (!bestEvaluation || evaluation.score < bestEvaluation.score) {
       bestTeams = candidate
@@ -175,12 +262,15 @@ export function balancedBuckets(names, count) {
   return buckets
 }
 
-export function assignRoles(team, roles, roleRules = {}) {
+export function assignRoles(team, roles, roleRules = {}, profiles = {}) {
   const available = shuffle(roles)
   const used = new Set()
+  const sides = new Set(team.members.map((member) => preferenceFor(member.name, profiles, roleRules)))
+  const configured = shuffle(['hard', 'soft'].filter((category) => roles.some((role) => normalizePreference(role) === category && team.members.some((member) => !(roleRules[member.name]?.excluded ?? []).includes(role)))))
+  const side = sides.has('hard') && !sides.has('soft') ? 'hard' : sides.has('soft') && !sides.has('hard') ? 'soft' : configured[0] ?? ''
   const members = team.members.map((member) => {
     const fixed = roleRules[member.name]?.fixed
-    if (fixed && roles.includes(fixed) && !used.has(fixed)) {
+    if (fixed && roles.includes(fixed) && !used.has(fixed) && (!side || !['hard', 'soft'].includes(normalizePreference(fixed)) || normalizePreference(fixed) === side)) {
       used.add(fixed)
       return { ...member, role: fixed }
     }
@@ -190,7 +280,7 @@ export function assignRoles(team, roles, roleRules = {}) {
   members.forEach((member) => {
     if (member.role) return
     const excluded = roleRules[member.name]?.excluded ?? []
-    const role = available.find((item) => !used.has(item) && !excluded.includes(item))
+    const role = available.find((item) => !used.has(item) && !excluded.includes(item) && (!side || !['hard', 'soft'].includes(normalizePreference(item)) || normalizePreference(item) === side))
     if (role) used.add(role)
     member.role = role ?? ''
   })

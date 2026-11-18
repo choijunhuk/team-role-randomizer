@@ -25,4 +25,17 @@ describe('participant input parsing', () => {
     expect(result.nameOnlyCount).toBe(1)
     expect(result.errors).toEqual(['오류학생 (abc): 학번은 숫자만, 기수는 17기처럼 입력해주세요.'])
   })
+
+  it('reads pasted name and preference columns without adding the preference as a person', () => {
+    const result = parseParticipantInput('하나\t하드\n둘 (17기)\t소프트\n셋\t상관X\n넷\t상관 없음')
+    expect(result.names).toEqual(['하나', '둘 (17기)', '셋', '넷'])
+    expect(result.preferences).toEqual({ 하나: 'hard', '둘 (17기)': 'soft', 셋: 'any', 넷: 'any' })
+    expect(result.errors).toEqual([])
+  })
+
+  it('keeps older tab-separated name-only pastes and identifiers valid', () => {
+    const result = parseParticipantInput('하나 (20251234)\t둘 (18기), 셋')
+    expect(result.names).toEqual(['하나 (20251234)', '둘 (18기)', '셋'])
+    expect(result.preferences).toEqual({})
+  })
 })

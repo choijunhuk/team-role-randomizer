@@ -6,6 +6,7 @@ import {
   rerollUnlockedTeams,
   teamAccent,
 } from './teamComposition'
+import { createTeams, profilesWithAssignedCategories } from './teamUtils'
 
 const team = (id, names) => ({ id, name: `${id}팀`, members: names.map((name) => ({ name, role: '' })) })
 
@@ -30,6 +31,10 @@ describe('fieldLabel', () => {
 })
 
 describe('distributionForField', () => {
+  it('shows stored preference values in Korean', () => {
+    const result = distributionForField([{ name: 'a' }, { name: 'b' }], 'preference', { a: { preference: 'hard' }, b: { preference: 'soft' } })
+    expect(result.map(({ value }) => value).sort()).toEqual(['소프트', '하드'])
+  })
   it('counts profile values and computes ratios', () => {
     const members = [{ name: 'a' }, { name: 'b' }, { name: 'c' }]
     const profiles = { a: { grade: '1학년' }, b: { grade: '1학년' }, c: { grade: '3학년' } }
@@ -64,6 +69,22 @@ describe('getTeamComposition', () => {
 })
 
 describe('rerollUnlockedTeams', () => {
+  it('keeps a locked team and separates preferences in every unlocked team', () => {
+    const teams = [team('1', ['hard1', 'any1']), team('2', ['hard2', 'hard3']), team('3', ['soft1', 'soft2']), team('4', ['soft3', 'any2'])]
+    teams[3].members[1].role = '소프트'
+    const profiles = Object.fromEntries(['hard1', 'hard2', 'hard3', 'soft1', 'soft2', 'soft3'].map((name) => [name, { preference: name.startsWith('hard') ? 'hard' : 'soft' }]))
+    const effective = profilesWithAssignedCategories(teams, profiles)
+    for (let run = 0; run < 20; run++) {
+      const result = rerollUnlockedTeams(teams, ['1'], (names, count) => createTeams(names, count, {}, [], effective).teams.map((item) => item.members.map((member) => member.name)))
+      expect(result[0]).toBe(teams[0])
+      expect(result.flatMap((item) => item.members.map((member) => member.name)).sort()).toEqual(teams.flatMap((item) => item.members.map((member) => member.name)).sort())
+      expect(result.flatMap((item) => item.members).find((member) => member.name === 'any2').role).toBe('소프트')
+      result.forEach((item) => {
+        const preferences = item.members.map((member) => effective[member.name]?.preference)
+        expect(preferences.includes('hard') && preferences.includes('soft')).toBe(false)
+      })
+    }
+  })
   // Deterministic builder: round-robin assignment, no randomness.
   const roundRobin = (names, count) => {
     const out = Array.from({ length: count }, () => [])

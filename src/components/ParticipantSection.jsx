@@ -43,12 +43,13 @@ export default function ParticipantSection({ participants, profiles, onProfiles,
   }
 
   return (
-    <Section id="participants" number="01" title="참가자 입력" description="줄바꿈, 쉼표 또는 엑셀에서 복사한 이름을 한 번에 추가할 수 있습니다." showStep={showStep} actions={<button className="button ghost small" onClick={() => onAdd(EXAMPLES.join('\n'))}>예시 추가</button>}>
+      <Section id="participants" number="01" title="참가자 입력" description="줄바꿈, 쉼표 또는 엑셀의 이름·희망 분야 두 열을 붙여넣을 수 있습니다." showStep={showStep} actions={<button className="button ghost small" onClick={() => onAdd(EXAMPLES.join('\n'))}>예시 추가</button>}>
       <div className="input-row">
         <textarea value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !input.includes('\n')) { event.preventDefault(); submit() } }} placeholder={'김민수 (20251234)\n이서연 (24기), 박지훈'} rows="3" />
         <button className="button primary" onClick={submit}>추가</button>
       </div>
       <p className="helper">이름 (숫자)는 학번, 이름 (숫자기)는 기수로 검증합니다. 예: 김민수 (20251234), 이서연 (17기)</p>
+        <p className="helper">두 번째 열에 하드, 소프트, 상관X를 붙여넣으면 희망 분야에 맞춰 조를 나눕니다.</p>
       {roster.eligible && (
         <RosterPicker
           members={roster.members}
@@ -82,11 +83,13 @@ export default function ParticipantSection({ participants, profiles, onProfiles,
                   {parsed.identifierType !== 'none' && parsed.identifierType !== 'invalid' && (
                     <span className="participant-id-badge">{formatParticipantIdentifier(parsed)}</span>
                   )}
+                    {profiles[name]?.preference && <span className="participant-id-badge">{({ hard: '하드', soft: '소프트', any: '상관없음' })[profiles[name].preference]}</span>}
                 </span>
                 <small>{expanded === name ? '접기' : '속성 편집'}</small>
               </button>
               <button className="text-button danger" onClick={() => onRemove(name)}>삭제</button>
               {expanded === name && <div className="profile-fields">
+                  <label>희망 분야 <select aria-label={`${parsed.name || name} 희망 분야`} value={profiles[name]?.preference ?? 'any'} onChange={(e) => update(name, 'preference', e.target.value)}><option value="any">상관없음</option><option value="hard">하드</option><option value="soft">소프트</option></select></label>
                 <input placeholder="학년 (예: 3학년)" value={profiles[name]?.grade ?? ''} onChange={(e) => update(name, 'grade', e.target.value)} />
                 <input placeholder="전공 (예: 컴퓨터공학)" value={profiles[name]?.major ?? ''} onChange={(e) => update(name, 'major', e.target.value)} />
                 <input placeholder="수준 (예: 중급)" value={profiles[name]?.level ?? ''} onChange={(e) => update(name, 'level', e.target.value)} />

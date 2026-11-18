@@ -18,6 +18,7 @@ const FIELD_LABELS = {
   grade: '학년',
   major: '전공',
   level: '수준',
+  preference: '희망 분야',
   generation: '기수',
   studentId: '학번',
 }
@@ -31,7 +32,7 @@ export function fieldLabel(field) {
 function resolveValue(name, field, profiles = {}) {
   const profile = profiles[name] ?? {}
   const direct = profile[field]
-  if (direct != null && String(direct).trim()) return String(direct).trim()
+  if (direct != null && String(direct).trim()) return field === 'preference' ? ({ hard: '하드', soft: '소프트', any: '상관없음' }[direct] ?? String(direct).trim()) : String(direct).trim()
   if (field === 'generation' || field === 'studentId') {
     const parsed = parseParticipantLabel(name)
     if (field === 'generation' && parsed.identifierType === 'generation') return parsed.identifier
@@ -61,7 +62,7 @@ function fieldHasData(allMembers, field, profiles) {
 
 // Summarise team composition for the balance-visualization panel. Only fields
 // with at least some real data are included so empty bars never clutter the UI.
-export function getTeamComposition(teams, profiles = {}, candidateFields = ['grade', 'major', 'level', 'generation']) {
+export function getTeamComposition(teams, profiles = {}, candidateFields = ['grade', 'major', 'level', 'generation', 'preference']) {
   if (!Array.isArray(teams) || teams.length === 0) return { fields: [], teams: [] }
   const allMembers = teams.flatMap((team) => team.members ?? [])
   const fields = candidateFields.filter((field) => fieldHasData(allMembers, field, profiles))
@@ -98,7 +99,7 @@ export function rerollUnlockedTeams(teams, lockedIds, builder) {
   const freeNames = freeMembers.map((m) => m.name)
 
   // builder(names, count) -> array of name arrays (one per unlocked team)
-  const distributed = builder(freeNames, unlockedTeams.length)
+  const distributed = builder(freeNames, unlockedTeams.length, unlockedTeams)
   const byName = new Map(freeMembers.map((m) => [m.name, m]))
 
   let cursor = 0

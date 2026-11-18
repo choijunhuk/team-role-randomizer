@@ -4,6 +4,11 @@ import { describe, expect, it } from 'vitest'
 import ResultSection from './ResultSection'
 
 describe('ResultSection operations', () => {
+  it('labels current hard and software groups after assignments', () => {
+    const markup = renderToStaticMarkup(<ResultSection teams={[{ id: 'h', name: '1팀', members: [{ name: 'hard1', role: '' }, { name: 'any1', role: '' }] }, { id: 's', name: '2팀', members: [{ name: 'soft1', role: '' }] }]} roles={[]} profiles={{ hard1: { preference: 'hard' }, soft1: { preference: 'soft' } }} evaluation={null} composition={{ fields: [] }} onChange={() => {}} />)
+    expect(markup).toContain('하드 조')
+    expect(markup).toContain('소프트 조')
+  })
   it('renders meeting operations for assigned teams', () => {
     const markup = renderToStaticMarkup(
       <ResultSection

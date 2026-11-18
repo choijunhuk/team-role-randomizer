@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assignRoles, balancedBuckets, createTeams, decodeShareData, encodeShareData, evaluateTeams, validateTeamConstraints } from './teamUtils'
+import { assignRoles, balancedBuckets, createTeams, decodeShareData, encodeShareData, evaluateTeams, profilesWithAssignedCategories, validateTeamConstraints } from './teamUtils'
 
 describe('balancedBuckets', () => {
   it('distributes names as evenly as possible', () => {
@@ -23,6 +23,89 @@ const participants = ['가', '나', '다', '라', '마', '바', '사']
 const fairness = { fixedTeams: {}, avoidPairs: [], preferPairs: [], repeatWeight: 8, balanceFields: [] }
 
 describe('team utilities', () => {
+  it('keeps hard and software teams separate while distributing flexible people', () => {
+    const names = Array.from({ length: 10 }, (_, index) => `person${index}`)
+    const profiles = Object.fromEntries(names.map((name, index) => [name, { preference: index < 4 ? 'hard' : index < 7 ? 'soft' : 'any' }]))
+    for (let run = 0; run < 50; run++) {
+      const { teams } = createTeams(names, 3, fairness, [], profiles)
+      expect(teams.flatMap(team => team.members.map(member => member.name)).sort()).toEqual([...names].sort())
+      expect(Math.max(...teams.map(team => team.members.length)) - Math.min(...teams.map(team => team.members.length))).toBeLessThanOrEqual(1)
+      for (const team of teams) {
+        const sides = team.members.map(member => profiles[member.name].preference)
+        expect(sides.includes('hard') && sides.includes('soft')).toBe(false)
+      }
+    }
+  })
+
+  it('rejects one mixed team or conflicting fixed teams before changing results', () => {
+    const names = ['hard1', 'soft1', 'any1', 'any2']
+    const profiles = { hard1: { preference: 'hard' }, soft1: { preference: 'soft' } }
+    expect(validateTeamConstraints(names, 1, fairness, profiles).errors[0]).toMatch(/하드.*소프트/)
+    const fixed = { ...fairness, fixedTeams: { hard1: 1, soft1: 1 } }
+    expect(validateTeamConstraints(names, 2, fixed, profiles).errors[0]).toMatch(/하드.*소프트.*고정/)
+    expect(() => createTeams(names, 2, fixed, [], profiles)).toThrow()
+  })
+
+  it('accounts for fixed flexible people occupying the only hard seats', () => {
+    const names = ['hard1', 'hard2', 'soft1', 'soft2', 'any1', 'any2']
+    const profiles = { hard1: { preference: 'hard' }, hard2: { preference: 'hard' }, soft1: { preference: 'soft' }, soft2: { preference: 'soft' } }
+    const fixed = { ...fairness, fixedTeams: { any1: 1, any2: 1 } }
+    expect(validateTeamConstraints(names, 2, fixed, profiles).errors[0]).toMatch(/하드.*소프트/)
+    expect(() => createTeams(names, 2, fixed, [], profiles)).toThrow()
+  })
+
+  it('never gives the opposite category role to a separated team', () => {
+    const team = { members: [{ name: 'hard1' }, { name: 'any1' }] }
+    const profiles = { hard1: { preference: 'hard' } }
+    for (let run = 0; run < 20; run++) {
+      expect(assignRoles(team, ['하드', '소프트', '발표자'], {}, profiles).members.map(({ role }) => role)).not.toContain('소프트')
+    }
+  })
+
+  it('chooses one category for an all-flexible team when category roles are available', () => {
+    const team = { members: [{ name: 'any1' }, { name: 'any2' }, { name: 'any3' }] }
+    for (let run = 0; run < 50; run++) {
+      const assigned = assignRoles(team, ['하드', '소프트', '발표자'])
+      const categories = assigned.members.map(({ role }) => role).filter((role) => role === '하드' || role === '소프트')
+      expect(new Set(categories).size).toBeLessThanOrEqual(1)
+    }
+    const excluded = { any1: { excluded: ['하드'] }, any2: { excluded: ['하드'] }, any3: { excluded: ['하드'] } }
+    expect(assignRoles(team, ['하드', '소프트', '발표자'], excluded).members.map(({ role }) => role)).not.toContain('하드')
+  })
+
+  it('rejects overflowing and invalid fixed team numbers while preserving soft avoid-pair reporting', () => {
+    const names = ['a', 'b', 'c', 'd']
+    expect(validateTeamConstraints(names, 2, { fixedTeams: { a: 1, b: 1, c: 1 } }).blockingErrors).toHaveLength(1)
+    expect(() => createTeams(names, 2, { fixedTeams: { a: 1, b: 1, c: 1 } })).toThrow(/정원/)
+    expect(() => createTeams(names, 2, { fixedTeams: { a: '1.5' } })).toThrow(/고정 팀 번호/)
+    const soft = validateTeamConstraints(names, 2, { fixedTeams: { a: 1, b: 1 }, avoidPairs: [['a', 'b']] })
+    expect(soft.blockingErrors).toEqual([])
+    expect(soft.errors).toHaveLength(1)
+  })
+
+  it('treats assigned category roles as transient reroll preferences without altering saved profiles', () => {
+    const profiles = { any1: { preference: 'any' }, any2: { preference: 'any' } }
+    const teams = [{ members: [{ name: 'any1', role: '하드' }, { name: 'any2', role: '소프트' }, { name: 'hard1', role: '' }, { name: 'soft1', role: '' }] }]
+    const effective = profilesWithAssignedCategories(teams, profiles)
+    expect(profiles).toEqual({ any1: { preference: 'any' }, any2: { preference: 'any' } })
+    expect(effective).toMatchObject({ any1: { preference: 'hard' }, any2: { preference: 'soft' } })
+    for (let run = 0; run < 20; run++) {
+      const result = createTeams(['any1', 'any2', 'hard1', 'soft1'], 2, fairness, [], effective)
+      for (const team of result.teams) {
+        const sides = team.members.map(({ name }) => effective[name]?.preference)
+        expect(sides.includes('hard') && sides.includes('soft')).toBe(false)
+      }
+    }
+  })
+
+  it('uses a hard or software fixed role as a preference only when one is defined', () => {
+    const names = ['hard1', 'soft1', 'any1', 'any2']
+    const rules = { hard1: { fixed: '하드' }, soft1: { fixed: '소프트' }, any1: { fixed: '발표자' } }
+    for (let run = 0; run < 15; run++) {
+      const result = createTeams(names, 2, fairness, [], {}, rules)
+      for (const team of result.teams) expect(team.members.map(member => rules[member.name]?.fixed)).not.toEqual(expect.arrayContaining(['하드', '소프트']))
+    }
+  })
   it('creates balanced teams', () => {
     const { teams } = createTeams(participants, 3, fairness)
     const sizes = teams.map((team) => team.members.length)
