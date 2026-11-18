@@ -3,6 +3,8 @@ import Section from './Section'
 import { useState } from 'react'
 import { teamAccent } from '../utils/teamComposition'
 import { buildPresentationQueue, getUnassignedRoleMembers, resultToChecklistText } from '../utils/workflowSummaries'
+import { preferenceFor } from '../utils/teamUtils'
+import { normalizePreference } from '../utils/participants'
 
 const fairnessItems = (evaluation) => {
   if (!evaluation?.breakdown) return []
@@ -68,7 +70,7 @@ function BalancePanel({ composition }) {
   )
 }
 
-export default function ResultSection({ teams, roles, evaluation, composition, lockedTeamIds = [], revealKey = 0, onToggleLock, onRerollUnlocked, canUndo, onUndo, onChange, onAssignAll, onAssignTeam, onCopy, onShare, onQr, onDownload, onReroll, showStep = true }) {
+export default function ResultSection({ teams, roles, profiles = {}, roleRules = {}, evaluation, composition, lockedTeamIds = [], revealKey = 0, onToggleLock, onRerollUnlocked, canUndo, onUndo, onChange, onAssignAll, onAssignTeam, onCopy, onShare, onQr, onDownload, onReroll, showStep = true }) {
   const updateTeam = (teamId, patch) => onChange(teams.map((team) => team.id === teamId ? { ...team, ...patch } : team))
   const updateMember = (teamId, name, patch) => onChange(teams.map((team) => team.id === teamId ? { ...team, members: team.members.map((member) => member.name === name ? { ...member, ...patch } : member) } : team))
   const move = (teamId, name, direction) => {
@@ -139,8 +141,10 @@ export default function ResultSection({ teams, roles, evaluation, composition, l
       <div className="team-grid" key={revealKey}>{teams.map((team, index) => {
         const accent = teamAccent(index)
         const isLocked = lockedTeamIds.includes(team.id)
+        const sides = new Set(team.members.flatMap((member) => [preferenceFor(member.name, profiles, roleRules), normalizePreference(member.role)]))
+        const side = sides.has('hard') && !sides.has('soft') ? '하드 조' : sides.has('soft') && !sides.has('hard') ? '소프트 조' : ''
         return <article className="team-card reveal" key={team.id} style={{ '--team-accent': accent.color, '--team-accent-soft': accent.soft, '--reveal-delay': `${index * 70}ms` }} onDragOver={(e) => e.preventDefault()} onDrop={(e) => drop(team.id, e.dataTransfer.getData('text/plain'))}>
-        <div className="team-card-header"><div><span>TEAM {String(index + 1).padStart(2, '0')}</span><input className="team-name-input" value={team.name} onChange={(e) => updateTeam(team.id, { name: e.target.value })} /></div><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>{onToggleLock && <button type="button" className={`team-lock ${isLocked ? 'is-locked' : ''}`} aria-pressed={isLocked} onClick={() => onToggleLock(team.id)}>{isLocked ? <Lock size={12} aria-hidden="true" /> : <Unlock size={12} aria-hidden="true" />}{isLocked ? '잠금' : '잠그기'}</button>}<button className="text-button" onClick={() => onAssignTeam(team.id)}>역할 배정</button></div></div>
+        <div className="team-card-header"><div><span>TEAM {String(index + 1).padStart(2, '0')}</span>{side && <strong className="team-kind">{side}</strong>}<input className="team-name-input" value={team.name} onChange={(e) => updateTeam(team.id, { name: e.target.value })} /></div><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>{onToggleLock && <button type="button" className={`team-lock ${isLocked ? 'is-locked' : ''}`} aria-pressed={isLocked} onClick={() => onToggleLock(team.id)}>{isLocked ? <Lock size={12} aria-hidden="true" /> : <Unlock size={12} aria-hidden="true" />}{isLocked ? '잠금' : '잠그기'}</button>}<button className="text-button" onClick={() => onAssignTeam(team.id)}>역할 배정</button></div></div>
         <ul>{team.members.map((member) => <li draggable onDragStart={(e) => e.dataTransfer.setData('text/plain', JSON.stringify({ sourceId: team.id, name: member.name }))} key={member.name}><span className="avatar">{member.name.slice(0, 1)}</span><input className="member-name-input" value={member.name} onChange={(e) => updateMember(team.id, member.name, { name: e.target.value })} /><select className="role-select" value={member.role} onChange={(e) => updateMember(team.id, member.name, { role: e.target.value })}><option value="">미배정</option>{roles.map((role) => <option key={role}>{role}</option>)}</select><div className="move-buttons"><button aria-label={`${member.name} 이전 팀으로 이동`} disabled={index === 0} onClick={() => move(team.id, member.name, -1)}><ChevronLeft size={14} aria-hidden="true" /></button><button aria-label={`${member.name} 다음 팀으로 이동`} disabled={index === teams.length - 1} onClick={() => move(team.id, member.name, 1)}><ChevronRight size={14} aria-hidden="true" /></button></div></li>)}</ul>
       </article>
       })}</div>

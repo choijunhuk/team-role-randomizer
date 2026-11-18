@@ -415,6 +415,7 @@ textarea { resize: vertical; min-height: 96px; width: 100%; }
 @keyframes card-reveal { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
 .team-card-header { display: flex; justify-content: space-between; align-items: center; padding: 18px; border-bottom: 1px solid var(--app-hairline); background: var(--app-surface-soft); }
 .team-card-header span { color: var(--team-accent, var(--app-accent)); font: 800 9px var(--apple-font-family); letter-spacing: 0.04em; }
+.team-card-header .team-kind { margin-left: 8px; color: var(--app-text); font-size: 12px; }
 .team-card h3 { margin: 3px 0 0; font-size: 18px; }
 .team-card ul { list-style: none; margin: 0; padding: 8px 14px 14px; }
 .team-card li { display: grid; grid-template-columns: auto 1fr 1fr auto; gap: 7px; align-items: center; padding: 10px 4px; border-bottom: 1px solid var(--app-hairline); font-size: 12px; cursor: grab; }

@@ -30,4 +30,10 @@ describe('ParticipantSection examples', () => {
     expect(markup).toContain('기수 17기')
     expect(markup).toContain('학번 2026402040')
   })
+
+  it('explains the two-column preference input without exposing private examples', () => {
+    const markup = renderToStaticMarkup(<ParticipantSection participants={['하나']} profiles={{ 하나: { preference: 'soft' } }} onProfiles={() => {}} onAdd={() => true} onRemove={() => {}} onClear={() => {}} />)
+    expect(markup).toContain('두 번째 열에 하드, 소프트, 상관X')
+    expect(markup).toContain('participant-id-badge">소프트')
+  })
 })

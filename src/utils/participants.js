@@ -1,4 +1,17 @@
-const splitInput = (raw) => String(raw ?? '').split(/[\n,\t]+/).map((value) => value.trim()).filter(Boolean)
+export const normalizePreference = (value) => {
+  const text = String(value ?? '').replace(/\s/g, '').toLowerCase()
+  if (text === '하드' || text === 'hard') return 'hard'
+  if (text === '소프트' || text === 'soft' || text === 'software') return 'soft'
+  if (text === '상관x' || text === '상관없음' || text === 'any') return 'any'
+  return ''
+}
+
+const splitInput = (raw) => String(raw ?? '').split('\n').flatMap((line) => {
+  const columns = line.split('\t').map((value) => value.trim())
+  const preference = columns.length === 2 ? normalizePreference(columns[1]) : ''
+  if (preference) return [{ value: columns[0], preference }]
+  return line.split(/[\t,]+/).map((value) => ({ value: value.trim(), preference: '' })).filter(({ value }) => value)
+})
 
 const normalizeGeneration = (value) => {
   const match = String(value ?? '').trim().match(/^(\d+)\s*기$/)
@@ -46,15 +59,20 @@ export function formatParticipantIdentifier(itemOrLabel) {
 export function parseParticipantInput(raw) {
   const items = []
   const errors = []
-  splitInput(raw).forEach((value) => {
+  const preferences = {}
+  splitInput(raw).forEach(({ value, preference }) => {
     const item = parseParticipantLabel(value)
-    if (item.valid) items.push(item)
+    if (item.valid) {
+      items.push(item)
+      if (preference) preferences[item.label] = preference
+    }
     else if (item.error) errors.push(item.error)
   })
 
   return {
     items,
     names: items.map((item) => item.label),
+    preferences,
     errors,
     nameOnlyCount: items.filter((item) => item.identifierType === 'none').length,
   }

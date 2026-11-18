@@ -21,9 +21,9 @@ import Disclosure from './components/Disclosure'
 import { DEFAULT_ROLES, EMPTY_FAIRNESS, useWorkspaceData } from './hooks/useWorkspaceData'
 import { useInviteState } from './hooks/useInviteState'
 import { EXAMPLES } from './components/ParticipantSection'
-import { parseParticipantInput } from './utils/participants'
+import { normalizePreference, parseParticipantInput } from './utils/participants'
 import { isAdminUser } from './utils/roster'
-import { assignRoles, balancedBuckets, createTeams, decodeShareData, encodeShareData, resultToText, validateTeamConstraints } from './utils/teamUtils'
+import { assignRoles, createTeams, decodeShareData, encodeShareData, preferenceFor, profilesWithAssignedCategories, resultToText, validateTeamConstraints } from './utils/teamUtils'
 import { getWorkspaceInsights } from './utils/workspaceInsights'
 import { getTeamComposition, rerollUnlockedTeams } from './utils/teamComposition'
 import { getInviteProgress } from './utils/workflowSummaries'
@@ -52,7 +52,7 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
     const value = Number(settingValue)
     return Number.isInteger(value) && value > 0 ? mode === 'count' ? value : Math.ceil(participants.length / value) : 0
   }, [mode, settingValue, participants.length])
-  const constraintReport = useMemo(() => validateTeamConstraints(participants, expectedTeams, fairness), [participants, expectedTeams, fairness])
+  const constraintReport = useMemo(() => validateTeamConstraints(participants, expectedTeams, fairness, profiles, roleRules), [participants, expectedTeams, fairness, profiles, roleRules])
   const { inbox, setInbox, sentInvites, recordSentInvite, deleteSentInvite, joinInvite, dismissInvite, addNotificationInvite, resetInvites } = useInviteState({ currentUser, workspace, setParticipants, createInviteRoom, notify })
   const workspaceInsights = useMemo(() => getWorkspaceInsights({
     roomName: workspace.room?.name ?? '',
@@ -86,7 +86,15 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
   const composition = useMemo(() => getTeamComposition(teams, profiles), [teams, profiles])
 
   const saveSnapshot = () => setUndoStack((stack) => [...stack.slice(-14), clone(teams)])
-  const changeTeams = (nextTeams, notice) => { saveSnapshot(); setTeams(nextTeams); if (notice) notify(notice) }
+  const changeTeams = (nextTeams, notice, recordUndo = true) => {
+    for (const team of nextTeams) {
+      const sides = new Set(team.members.flatMap((member) => [preferenceFor(member.name, profiles, roleRules), normalizePreference(member.role)]))
+      if (sides.has('hard') && sides.has('soft')) { notify(`${team.name}에 하드와 소프트를 함께 넣을 수 없습니다.`); return false }
+    }
+    if (recordUndo) saveSnapshot()
+    setTeams(nextTeams); if (notice) notify(notice)
+    return true
+  }
 
   const addParticipants = (raw) => {
     const result = parseParticipantInput(raw)
@@ -94,6 +102,7 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
     const next = [...new Set(result.names)].filter((name) => !participants.includes(name))
     if (!next.length) { setMessage({ type: 'error', text: result.names.length ? '이미 등록된 참가자입니다.' : '추가할 이름을 입력해주세요.' }); return false }
     setParticipants([...participants, ...next])
+    if (Object.keys(result.preferences).length) setProfiles({ ...profiles, ...Object.fromEntries(next.filter((name) => result.preferences[name]).map((name) => [name, { ...profiles[name], preference: result.preferences[name] }])) })
     const duplicateNotice = next.length < result.names.length ? ' 중복 참가자는 제외했습니다.' : ''
     const nameOnlyNotice = result.nameOnlyCount ? ` 식별자 없는 ${result.nameOnlyCount}명은 이름만 표시됩니다.` : ''
     setMessage({ type: duplicateNotice || nameOnlyNotice ? 'warning' : 'success', text: `${next.length}명을 추가했습니다.${duplicateNotice}${nameOnlyNotice}` })
@@ -109,7 +118,7 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
     if (participants.length < 2) return '참가자는 2명 이상이어야 합니다.'
     if (!Number.isInteger(value) || value < 1) return '팀 설정 값은 1 이상이어야 합니다.'
     if (mode === 'count' && value > participants.length) return '팀 개수는 참가자 수보다 많을 수 없습니다.'
-    const invalid = Object.entries(fairness.fixedTeams).find(([name, team]) => participants.includes(name) && team && (Number(team) < 1 || Number(team) > expectedTeams))
+    const invalid = Object.entries(fairness.fixedTeams).find(([name, team]) => participants.includes(name) && team && (!Number.isInteger(Number(team)) || Number(team) < 1 || Number(team) > expectedTeams))
     if (constraintReport.errors.length) return constraintReport.errors[0]
     return invalid ? `${invalid[0]}님의 고정 팀 번호를 확인해주세요.` : ''
   }
@@ -121,25 +130,43 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
   const assignTeams = () => {
     const error = validate()
     if (error) return notify(error)
-    const result = createTeams(participants, expectedTeams, fairness, histories, profiles)
-    changeTeams(result.teams)
-    setEvaluation(result.evaluation)
-    setLockedTeamIds([])
-    setRevealKey((value) => value + 1)
-    addHistory(result.teams)
-    notify(`${result.teams.length}개 팀을 배정했습니다.`)
-    window.setTimeout(() => document.querySelector('.result-section')?.scrollIntoView({ behavior: 'smooth' }), 50)
+    try {
+      const effective = profilesWithAssignedCategories(teams, profiles, roleRules)
+      const result = createTeams(participants, expectedTeams, fairness, histories, effective, roleRules)
+      if (!changeTeams(result.teams)) return
+      setEvaluation(result.evaluation)
+      setLockedTeamIds([])
+      setRevealKey((value) => value + 1)
+      addHistory(result.teams)
+      notify(`${result.teams.length}개 팀을 배정했습니다.`)
+      window.setTimeout(() => document.querySelector('.result-section')?.scrollIntoView({ behavior: 'smooth' }), 50)
+    } catch (cause) { notify(cause instanceof Error ? cause.message : '팀을 배정하지 못했습니다.') }
   }
   const toggleTeamLock = (teamId) => setLockedTeamIds((ids) => ids.includes(teamId) ? ids.filter((id) => id !== teamId) : [...ids, teamId])
   const rerollUnlocked = () => {
     if (teams.length === 0) return
     if (lockedTeamIds.length === 0) return assignTeams()
     if (lockedTeamIds.length >= teams.length) return notify('잠금 해제된 팀이 없습니다.')
-    const next = rerollUnlockedTeams(teams, lockedTeamIds, balancedBuckets)
-    changeTeams(next)
-    setEvaluation(null)
-    setRevealKey((value) => value + 1)
-    notify('잠그지 않은 팀만 다시 섞었습니다.')
+    try {
+      for (const team of teams.filter((item) => lockedTeamIds.includes(item.id))) {
+        const sides = new Set(team.members.flatMap((member) => [preferenceFor(member.name, profiles, roleRules), normalizePreference(member.role)]))
+        if (sides.has('hard') && sides.has('soft')) throw new Error(`${team.name}에 하드와 소프트가 함께 고정되어 있습니다.`)
+      }
+      const next = rerollUnlockedTeams(teams, lockedTeamIds, (names, count, unlocked) => {
+        const effective = profilesWithAssignedCategories(teams, profiles, roleRules)
+        const fixedTeams = Object.fromEntries(Object.entries(fairness.fixedTeams).filter(([name, number]) => names.includes(name) && number).map(([name, number]) => {
+          const target = teams[Number(number) - 1]
+          const index = unlocked.findIndex((team) => team.id === target?.id)
+          if (index < 0) throw new Error(`${name}님의 고정 팀이 잠겨 있습니다.`)
+          return [name, index + 1]
+        }))
+        return createTeams(names, count, { ...fairness, fixedTeams }, histories, effective, roleRules).teams.map((team) => team.members.map((member) => member.name))
+      })
+      if (!changeTeams(next)) return
+      setEvaluation(null)
+      setRevealKey((value) => value + 1)
+      notify('잠그지 않은 팀만 다시 섞었습니다.')
+    } catch (error) { notify(error.message) }
   }
   const shareUrl = () => `${location.origin}${location.pathname}#share=${encodeURIComponent(encodeShareData({ teams }))}`
   const copyText = async (text, success) => {
@@ -189,7 +216,7 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
     notify(`${room.name} 방을 삭제했습니다.`)
   }
 
-  const assignAllRoles = () => changeTeams(teams.map((team) => assignRoles(team, roles, roleRules)), '모든 역할을 배정했습니다.')
+  const assignAllRoles = () => changeTeams(teams.map((team) => assignRoles(team, roles, roleRules, profiles)), '모든 역할을 배정했습니다.')
 
   useEffect(() => {
     if (!showStepLabels) return undefined
@@ -293,7 +320,7 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
             <RoleSection roles={roles} roleRules={roleRules} participants={participants} onRules={setRoleRules} onAdd={addRole} onRemove={(role) => setRoles(roles.filter((item) => item !== role))} showStep={false} embedded />
           </Disclosure>
           <div className="assign-banner"><div><span>READY</span><strong>{participants.length}명을 {expectedTeams || 0}개 팀으로 배정합니다.</strong></div><button className="button primary large" onClick={assignTeams}>랜덤 팀 배정하기 <ArrowRight size={17} aria-hidden="true" /></button></div>
-          <ResultSection teams={teams} roles={roles} evaluation={evaluation} composition={composition} lockedTeamIds={lockedTeamIds} revealKey={revealKey} onToggleLock={toggleTeamLock} onRerollUnlocked={rerollUnlocked} canUndo={undoStack.length > 0} onUndo={() => { const previous = undoStack.at(-1); setUndoStack(undoStack.slice(0, -1)); setTeams(previous) }} onChange={changeTeams} onReroll={assignTeams} onAssignAll={assignAllRoles} onAssignTeam={(id) => changeTeams(teams.map((team) => team.id === id ? assignRoles(team, roles, roleRules) : team), '역할을 배정했습니다.')} onCopy={() => copyText(resultToText(teams), '결과를 복사했습니다.')} onShare={() => copyText(shareUrl(), '공유 링크를 복사했습니다.')} onQr={async () => setQr(await QRCode.toDataURL(shareUrl(), { width: 320, margin: 2 }))} onDownload={() => download(resultToText(teams), `팀-배정-${new Date().toISOString().slice(0, 10)}.txt`)} showStep={showStepLabels} />
+          <ResultSection teams={teams} roles={roles} profiles={profiles} roleRules={roleRules} evaluation={evaluation} composition={composition} lockedTeamIds={lockedTeamIds} revealKey={revealKey} onToggleLock={toggleTeamLock} onRerollUnlocked={rerollUnlocked} canUndo={undoStack.length > 0} onUndo={() => { const previous = undoStack.at(-1); if (changeTeams(previous, undefined, false)) setUndoStack(undoStack.slice(0, -1)) }} onChange={changeTeams} onReroll={assignTeams} onAssignAll={assignAllRoles} onAssignTeam={(id) => changeTeams(teams.map((team) => team.id === id ? assignRoles(team, roles, roleRules, profiles) : team), '역할을 배정했습니다.')} onCopy={() => copyText(resultToText(teams), '결과를 복사했습니다.')} onShare={() => copyText(shareUrl(), '공유 링크를 복사했습니다.')} onQr={async () => setQr(await QRCode.toDataURL(shareUrl(), { width: 320, margin: 2 }))} onDownload={() => download(resultToText(teams), `팀-배정-${new Date().toISOString().slice(0, 10)}.txt`)} showStep={showStepLabels} />
           <div className="tool-stack">
             <p className="tool-stack-label">작업 도구</p>
             <Disclosure id="invites" icon={Mailbox} title="초대 관리" hint="받은 초대 수락 · 링크와 알림 보내기" badge={inbox.length + sentInvites.length} defaultOpen={inbox.length > 0}>
@@ -304,7 +331,7 @@ export default function App({ currentUser, logoutError, logoutPending, onLogout 
               <InviteProgressBoard progress={inviteProgress} />
             </Disclosure>
             <Disclosure id="history" icon={History} title="최근 기록 · 백업" hint="저장한 배정 불러오기 · JSON 내보내기/가져오기" badge={histories.length} defaultOpen={false}>
-              <HistorySection histories={histories} onLoad={(history) => { changeTeams(clone(history.teams)); notify('기록을 불러왔습니다.') }} onDelete={(id) => setHistories(histories.filter((item) => item.id !== id))} onToggleFavorite={(id) => setHistories(histories.map((item) => item.id === id ? { ...item, favorite: !item.favorite } : item))} onClear={() => window.confirm('기록을 모두 삭제할까요?') && setHistories([])} onExport={exportJson} onImport={importJson} showStep={false} embedded />
+              <HistorySection histories={histories} onLoad={(history) => { if (changeTeams(clone(history.teams))) notify('기록을 불러왔습니다.') }} onDelete={(id) => setHistories(histories.filter((item) => item.id !== id))} onToggleFavorite={(id) => setHistories(histories.map((item) => item.id === id ? { ...item, favorite: !item.favorite } : item))} onClear={() => window.confirm('기록을 모두 삭제할까요?') && setHistories([])} onExport={exportJson} onImport={importJson} showStep={false} embedded />
             </Disclosure>
             <Disclosure icon={Cloud} title="공유 방 동기화" hint="이 방의 스냅샷을 서버와 주고받기" defaultOpen={false}>
               <SharedRoomPanel
