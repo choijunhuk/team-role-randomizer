@@ -88,8 +88,7 @@ describe('team utilities', () => {
     const teams = [{ members: [{ name: 'any1', role: '하드' }, { name: 'any2', role: '소프트' }, { name: 'hard1', role: '' }, { name: 'soft1', role: '' }] }]
     const effective = profilesWithAssignedCategories(teams, profiles)
     expect(profiles).toEqual({ any1: { preference: 'any' }, any2: { preference: 'any' } })
-    expect(effective.any1.preference).toBe('hard')
-    expect(effective.any2.preference).toBe('soft')
+    expect(effective).toMatchObject({ any1: { preference: 'hard' }, any2: { preference: 'soft' } })
     for (let run = 0; run < 20; run++) {
       const result = createTeams(['any1', 'any2', 'hard1', 'soft1'], 2, fairness, [], effective)
       for (const team of result.teams) {
